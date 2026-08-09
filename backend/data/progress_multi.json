@@ -1,0 +1,38 @@
+{
+  "user_dev": {
+    "solvedProblems": [
+      "two-sum"
+    ],
+    "savedCode": {
+      "two-sum": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}"
+    },
+    "dayStatus": {
+      "1": "in-progress"
+    },
+    "testScores": {}
+  },
+  "user_1786213124553": {
+    "solvedProblems": [
+      "two-sum"
+    ],
+    "savedCode": {
+      "two-sum": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}"
+    },
+    "dayStatus": {
+      "1": "in-progress"
+    },
+    "testScores": {}
+  },
+  "user_sarah": {
+    "solvedProblems": [
+      "two-sum"
+    ],
+    "savedCode": {
+      "two-sum": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}"
+    },
+    "dayStatus": {
+      "1": "in-progress"
+    },
+    "testScores": {}
+  }
+}

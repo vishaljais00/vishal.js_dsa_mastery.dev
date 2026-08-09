@@ -1,0 +1,30 @@
+[
+  {
+    "id": "user_alex",
+    "username": "alex_coder",
+    "name": "Alex Rivera",
+    "passwordHash": "pass123",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
+  },
+  {
+    "id": "user_sarah",
+    "username": "sarah_js",
+    "name": "Sarah Chen",
+    "passwordHash": "pass123",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
+  },
+  {
+    "id": "user_dev",
+    "username": "dsa_ninja",
+    "name": "Ninja Coder",
+    "passwordHash": "pass123",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Ninja"
+  },
+  {
+    "id": "user_1786213124553",
+    "username": "Admin",
+    "name": "Coding Ninja",
+    "passwordHash": "admin",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"
+  }
+]

@@ -1,0 +1,104 @@
+[
+  {
+    "id": "sol_1",
+    "problemId": "two-sum",
+    "userId": "user_alex",
+    "username": "alex_coder",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
+    "code": "function twoSum(nums, target) {\n    const map = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n        map.set(nums[i], i);\n    }\n    return [];\n}",
+    "runtimeMs": 2,
+    "patternTag": "HashMap (Single Pass)",
+    "upvotes": 26,
+    "createdAt": "2026-08-06T18:15:43.314Z",
+    "upvotedBy": [
+      "user_sarah"
+    ]
+  },
+  {
+    "id": "sol_2",
+    "problemId": "two-sum",
+    "userId": "user_sarah",
+    "username": "sarah_js",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+    "code": "function twoSum(nums, target) {\n    const obj = {};\n    for (let i = 0; i < nums.length; i++) {\n        if (obj[target - nums[i]] !== undefined) {\n            return [obj[target - nums[i]], i];\n        }\n        obj[nums[i]] = i;\n    }\n    return [];\n}",
+    "runtimeMs": 1,
+    "patternTag": "Object Lookup O(n)",
+    "upvotes": 18,
+    "createdAt": "2026-08-07T18:15:43.316Z"
+  },
+  {
+    "id": "sol_3",
+    "problemId": "best-time-to-buy-sell-stock",
+    "userId": "user_alex",
+    "username": "alex_coder",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
+    "code": "function maxProfit(prices) {\n    let minPrice = Infinity;\n    let maxProfit = 0;\n    for (let price of prices) {\n        if (price < minPrice) minPrice = price;\n        else if (price - minPrice > maxProfit) maxProfit = price - minPrice;\n    }\n    return maxProfit;\n}",
+    "runtimeMs": 3,
+    "patternTag": "Single Pass Min Tracking",
+    "upvotes": 15,
+    "createdAt": "2026-08-05T18:15:43.316Z"
+  },
+  {
+    "problemId": "two-sum",
+    "userId": "user_dev",
+    "username": "dsa_ninja",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Ninja",
+    "code": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}",
+    "runtimeMs": 7,
+    "patternTag": "HashMap",
+    "id": "sol_1786213048733",
+    "upvotes": 1,
+    "createdAt": "2026-08-08T18:17:28.733Z"
+  },
+  {
+    "problemId": "two-sum",
+    "userId": "user_1786213124553",
+    "username": "Admin",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
+    "code": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}",
+    "runtimeMs": 3,
+    "patternTag": "HashMap",
+    "id": "sol_1786213131529",
+    "upvotes": 5,
+    "createdAt": "2026-08-08T18:18:51.529Z"
+  },
+  {
+    "problemId": "two-sum",
+    "userId": "user_sarah",
+    "username": "sarah_js",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+    "code": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}",
+    "runtimeMs": 2,
+    "patternTag": "HashMap",
+    "id": "sol_1786213602398",
+    "upvotes": 0,
+    "upvotedBy": [],
+    "createdAt": "2026-08-08T18:26:42.398Z"
+  },
+  {
+    "problemId": "two-sum",
+    "userId": "user_sarah",
+    "username": "sarah_js",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+    "code": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}",
+    "runtimeMs": 2,
+    "patternTag": "HashMap",
+    "id": "sol_1786213611413",
+    "upvotes": 0,
+    "upvotedBy": [],
+    "createdAt": "2026-08-08T18:26:51.413Z"
+  },
+  {
+    "problemId": "two-sum",
+    "userId": "user_sarah",
+    "username": "sarah_js",
+    "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+    "code": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nfunction twoSum(nums, target) {\n    const map = new Map();\n\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n\n        map.set(nums[i], i);\n    }\n\n    return [];\n}",
+    "runtimeMs": 2,
+    "patternTag": "HashMap",
+    "id": "sol_1786213612712",
+    "upvotes": 0,
+    "upvotedBy": [],
+    "createdAt": "2026-08-08T18:26:52.712Z"
+  }
+]

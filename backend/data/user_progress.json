@@ -1,0 +1,53 @@
+{
+  "solvedProblems": [
+    "two-sum"
+  ],
+  "dayStatus": {
+    "1": "in-progress",
+    "30": "completed"
+  },
+  "testScores": {
+    "30": {
+      "score": 0,
+      "total": 5,
+      "timeSpentSeconds": 9,
+      "dateCompleted": "2026-08-08T18:07:17.197Z"
+    }
+  },
+  "interviewRecord": {
+    "date": "2026-08-08T18:07:17.193Z",
+    "problemsRecorded": [
+      {
+        "problemId": "1",
+        "solved": false,
+        "timeMinutes": 15,
+        "patternUsed": "HashMap"
+      },
+      {
+        "problemId": "2",
+        "solved": false,
+        "timeMinutes": 20,
+        "patternUsed": "Sliding Window"
+      },
+      {
+        "problemId": "3",
+        "solved": false,
+        "timeMinutes": 15,
+        "patternUsed": "Binary Search"
+      },
+      {
+        "problemId": "4",
+        "solved": false,
+        "timeMinutes": 15,
+        "patternUsed": "Stack"
+      },
+      {
+        "problemId": "5",
+        "solved": false,
+        "timeMinutes": 25,
+        "patternUsed": "Two Pointers"
+      }
+    ],
+    "totalScore": "0/5"
+  }
+}
