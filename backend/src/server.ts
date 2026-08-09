@@ -17,17 +17,23 @@ app.get('/health', (req, res) => {
 });
 
 async function startServer() {
+  app.listen(PORT, () => {
+    console.log(`=================================================`);
+    console.log(`🚀 JS DSA Backend Server running on port ${PORT}`);
+    console.log(`=================================================`);
+  });
+
   try {
     await MysqlStorageService.initDatabase();
-    app.listen(PORT, () => {
-      console.log(`=================================================`);
-      console.log(`🚀 JS DSA MySQL Backend Server running on http://localhost:${PORT}`);
-      console.log(`=================================================`);
-    });
-  } catch (err) {
-    console.error('Failed to start backend server:', err);
-    process.exit(1);
+    console.log(`✅ [Database] Initialized and connected to MySQL successfully.`);
+  } catch (err: any) {
+    console.error(`❌ [Database Error] Could not connect to MySQL at ${process.env['DB_HOST'] || 'localhost'}:${process.env['DB_PORT'] || 3306}: ${err.message}`);
+    console.error(`💡 Tip: Make sure DB_HOST, DB_USER, DB_PASS, and DB_NAME environment variables are set in your cloud dashboard.`);
   }
 }
 
-startServer();
+if (process.env.NODE_ENV !== 'production' || require.main === module) {
+  startServer();
+}
+
+export default app;

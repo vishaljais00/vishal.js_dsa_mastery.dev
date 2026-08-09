@@ -6,6 +6,8 @@ const DB_PASS = process.env['DB_PASS'] || 'root';
 const DB_NAME = process.env['DB_NAME'] || 'js_dsa_db';
 const DB_PORT = Number(process.env['DB_PORT']) || 3306;
 
+const DB_SSL = process.env['DB_SSL'] === 'true' || process.env['NODE_ENV'] === 'production';
+
 export const pool = mysql.createPool({
   host: DB_HOST,
   user: DB_USER,
@@ -14,19 +16,26 @@ export const pool = mysql.createPool({
   port: DB_PORT,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: DB_SSL ? { rejectUnauthorized: false } : undefined
 });
 
 export async function initializeDatabase() {
-  const connection = await mysql.createConnection({
-    host: DB_HOST,
-    user: DB_USER,
-    password: DB_PASS,
-    port: DB_PORT
-  });
+  // If database already exists or connected, handle initialization
+  try {
+    const connection = await mysql.createConnection({
+      host: DB_HOST,
+      user: DB_USER,
+      password: DB_PASS,
+      port: DB_PORT,
+      ssl: DB_SSL ? { rejectUnauthorized: false } : undefined
+    });
 
-  await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
-  await connection.end();
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
+    await connection.end();
+  } catch (err: any) {
+    console.warn(`⚠️ [DB Initialization Notice] Could not create database directly: ${err.message}. Assuming table initialization via pool.`);
+  }
 
   // Create tables in js_dsa_db
   await pool.query(`
