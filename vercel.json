@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend-app/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "frontend-app/dist/js-dsa-frontend/browser"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
