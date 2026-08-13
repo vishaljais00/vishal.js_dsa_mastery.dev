@@ -6,6 +6,7 @@ import { forkJoin } from 'rxjs';
 import { DsaService, Problem, ExecutionResponse } from '../../core/services/dsa.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { MonacoEditorComponent } from '../../shared/monaco-editor/monaco-editor.component';
 
 export interface ExamQuestionState {
@@ -166,10 +167,10 @@ export interface ExamQuestionState {
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
             
             <!-- LEFT PANE: PROBLEM STATEMENT -->
-            <div class="lg:col-span-5 bg-slate-900 rounded-2xl p-5 border border-slate-800 max-h-[75vh] overflow-y-auto">
+            <div class="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 max-h-[75vh] overflow-y-auto transition-colors">
               
               <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-mono font-bold text-indigo-400 bg-indigo-950/80 border border-indigo-800 px-2.5 py-1 rounded-md">
+                <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 px-2.5 py-1 rounded-md">
                   Question {{activeQuestionIndex + 1}} of 5
                 </span>
                 <span [class]="getDifficultyClass(currentQ.problem.difficulty)">
@@ -177,55 +178,64 @@ export interface ExamQuestionState {
                 </span>
               </div>
 
-              <h2 class="text-xl font-extrabold text-white mb-2">{{currentQ.problem.title}}</h2>
-              <span class="text-xs font-mono text-slate-400 block mb-4">Pattern: {{currentQ.problem.patternTag}}</span>
-
-              <div class="prose prose-invert max-w-none text-xs text-slate-300 leading-relaxed mb-6 whitespace-pre-line">
+              <h2 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2">{{currentQ.problem.title}}</h2>
+              
+              <div class="prose dark:prose-invert text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed mb-4">
                 {{currentQ.problem.description}}
               </div>
 
-              <!-- Test Cases Examples -->
-              <div class="space-y-3">
-                <span class="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wide block">Sample Test Cases:</span>
-                <div *ngFor="let tc of currentQ.problem.testCases; let tcIdx = index" class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs">
-                  <div class="text-slate-400"><strong class="text-slate-300">Input:</strong> {{tc.input}}</div>
-                  <div class="text-emerald-400 mt-1"><strong class="text-emerald-300">Expected:</strong> {{tc.expectedOutput}}</div>
+              <!-- Pattern Tag -->
+              <div class="mb-4 flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-500 dark:text-slate-400 font-bold">Pattern:</span>
+                <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-full font-mono font-bold">{{currentQ.problem.patternTag}}</span>
+              </div>
+
+              <!-- Sample Test Cases -->
+              <div>
+                <span class="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 block mb-2">Visible Test Cases:</span>
+                <div class="space-y-2">
+                  <div *ngFor="let tc of currentQ.problem.testCases; let idx = index" class="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 font-mono text-[11px]">
+                    <div class="text-slate-500 font-bold mb-1">Test {{idx + 1}}:</div>
+                    <div class="text-slate-700 dark:text-slate-300">Input: <span class="text-amber-600 dark:text-amber-300 font-bold">{{tc.input}}</span></div>
+                    <div class="text-slate-700 dark:text-slate-300">Expected: <span class="text-emerald-600 dark:text-emerald-300 font-bold">{{tc.expectedOutput}}</span></div>
+                  </div>
                 </div>
               </div>
 
-              <div *ngIf="currentQ.isLocked" class="mt-6 p-4 bg-rose-950/40 border border-rose-800 rounded-xl text-xs text-rose-300 font-mono font-bold flex items-center gap-2">
-                <i class="fa-solid fa-lock text-rose-400 text-base"></i>
-                This question's timer has expired. The editor is now locked.
+              <div *ngIf="currentQ.isLocked" class="mt-6 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 font-mono font-bold flex items-center gap-2">
+                <i class="fa-solid fa-lock text-rose-500 dark:text-rose-400 text-base"></i>
+                This question's timer has expired.
               </div>
 
             </div>
 
             <!-- RIGHT PANE: CODE EDITOR & RUNNER -->
-            <div class="lg:col-span-7 bg-slate-900 rounded-2xl p-5 border border-slate-800 flex flex-col justify-between max-h-[75vh]">
+            <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 flex flex-col justify-between max-h-[75vh] transition-colors">
               
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs font-mono font-bold text-slate-400">
-                    <i class="fa-solid fa-code text-indigo-400 mr-1"></i> Solution Editor (JavaScript)
+                  <span class="text-xs font-mono font-bold text-slate-600 dark:text-slate-400">
+                    <i class="fa-solid fa-code text-indigo-500 dark:text-indigo-400 mr-1"></i> Solution Editor (JavaScript)
                   </span>
-                  <span *ngIf="currentQ.isSaved" class="text-[11px] font-mono text-emerald-400 font-bold">
+                  <span *ngIf="currentQ.isSaved" class="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                     <i class="fa-solid fa-check mr-1"></i> Code Saved
                   </span>
                 </div>
 
-                <div class="h-64 sm:h-80 rounded-xl overflow-hidden border border-slate-800 relative bg-[#0f172a]">
+                <div class="h-64 sm:h-80 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative bg-slate-50 dark:bg-[#0f172a] transition-colors">
                   <app-monaco-editor 
                     [(value)]="currentQ.userCode" 
                     [language]="'javascript'"
                     [readOnly]="currentQ.isLocked"
+                    [theme]="themeService.themeSignal() === 'dark' ? 'vs-dark' : 'vs'"
                   ></app-monaco-editor>
                 </div>
               </div>
 
               <!-- Output & Test Execution Panel -->
-              <div class="mt-4 border-t border-slate-800 pt-4">
+              <div class="mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
                 
-                <div *ngIf="currentQ.testResult" class="mb-3 p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs">
+                <div *ngIf="currentQ.testResult" class="mb-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-xs">
                   <div class="flex items-center justify-between mb-2">
                     <span [class.text-emerald-400]="currentQ.testResult.status === 'ACCEPTED'" [class.text-rose-400]="currentQ.testResult.status !== 'ACCEPTED'" class="font-bold">
                       Status: {{currentQ.testResult.status}}
@@ -339,7 +349,8 @@ export class InterviewTestComponent implements OnInit, OnDestroy {
   constructor(
     private dsaService: DsaService,
     private authService: AuthService,
-    private toast: ToastService
+    private toast: ToastService,
+    public themeService: ThemeService
   ) {}
 
   ngOnInit() {

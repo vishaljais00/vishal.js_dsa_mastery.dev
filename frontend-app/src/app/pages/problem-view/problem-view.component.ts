@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DsaService, Problem, ExecutionResponse, CommunitySolution } from '../../core/services/dsa.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { AuthModalComponent } from '../auth-modal/auth-modal.component';
 import { MonacoEditorComponent } from '../../shared/monaco-editor/monaco-editor.component';
 
@@ -209,23 +210,23 @@ import { MonacoEditorComponent } from '../../shared/monaco-editor/monaco-editor.
       </div>
 
       <!-- RIGHT PANE: Code Editor & Console Runner -->
-      <div class="bg-[#0f172a] flex flex-col justify-between h-full overflow-hidden">
+      <div class="bg-slate-50 dark:bg-[#0f172a] flex flex-col justify-between h-full overflow-hidden transition-colors">
         
         <!-- Editor Header Actions -->
-        <div class="bg-[#1e293b] px-4 py-3 border-b border-slate-700 flex items-center justify-between shrink-0">
+        <div class="bg-slate-100 dark:bg-[#1e293b] px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 transition-colors">
           <div class="flex items-center gap-2">
             <span class="w-3 h-3 rounded-full bg-rose-500"></span>
             <span class="w-3 h-3 rounded-full bg-amber-500"></span>
             <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-            <span class="text-xs font-mono text-slate-300 font-semibold ml-2">solution.js</span>
+            <span class="text-xs font-mono text-slate-700 dark:text-slate-300 font-semibold ml-2">solution.js</span>
           </div>
 
           <div class="flex items-center gap-2">
-            <button (click)="resetCode()" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold border border-slate-600 transition-all flex items-center gap-1.5">
+            <button (click)="resetCode()" class="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-semibold border border-slate-300 dark:border-slate-600 transition-all flex items-center gap-1.5">
               <i class="fa-solid fa-rotate-left"></i> Reset Stub
             </button>
             
-            <button (click)="runCode()" [disabled]="executing" class="px-3.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-emerald-400 border border-slate-600 text-xs font-bold transition-all flex items-center gap-1.5">
+            <button (click)="runCode()" [disabled]="executing" class="px-3.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-emerald-700 dark:text-emerald-400 border border-slate-300 dark:border-slate-600 text-xs font-bold transition-all flex items-center gap-1.5">
               <i *ngIf="!executing" class="fa-solid fa-play"></i>
               <i *ngIf="executing" class="fa-solid fa-circle-notch fa-spin"></i>
               Run Tests
@@ -238,12 +239,16 @@ import { MonacoEditorComponent } from '../../shared/monaco-editor/monaco-editor.
         </div>
 
         <!-- Interactive Monaco JS Code Editor Area -->
-        <div class="flex-1 overflow-hidden bg-[#0f172a] relative">
-          <app-monaco-editor [(value)]="code" [language]="'javascript'"></app-monaco-editor>
+        <div class="flex-1 overflow-hidden bg-slate-50 dark:bg-[#0f172a] relative">
+          <app-monaco-editor 
+            [(value)]="code" 
+            [language]="'javascript'"
+            [theme]="themeService.themeSignal() === 'dark' ? 'vs-dark' : 'vs'"
+          ></app-monaco-editor>
         </div>
 
         <!-- Console & Test Output Drawer -->
-        <div class="bg-[#090d16] border-t border-slate-800 max-h-72 overflow-y-auto p-4">
+        <div class="bg-white dark:bg-[#090d16] border-t border-slate-200 dark:border-slate-800 max-h-72 overflow-y-auto p-4 transition-colors">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
               <span class="text-xs font-mono font-bold text-slate-400 uppercase">Execution Output</span>
@@ -337,7 +342,8 @@ export class ProblemViewComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private dsaService: DsaService,
-    public authService: AuthService
+    public authService: AuthService,
+    public themeService: ThemeService
   ) {}
 
   ngOnInit() {

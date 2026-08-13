@@ -40,6 +40,9 @@ export class MonacoEditorComponent implements AfterViewInit, OnChanges, OnDestro
       if (changes['readOnly']) {
         this.editor.updateOptions({ readOnly: this.readOnly });
       }
+      if (changes['theme'] && (window as any).monaco?.editor) {
+        (window as any).monaco.editor.setTheme(changes['theme'].currentValue);
+      }
     }
   }
 
