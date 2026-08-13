@@ -185,6 +185,68 @@ export class MysqlStorageService {
   }
 
   // --- AUTH & CALENDAR-BASED STREAK METHODS ---
+  public static async upsertGoogleUser(data: { id: string; username: string; name: string; email: string; avatarUrl: string }): Promise<User> {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const [existing]: any = await pool.query(
+      'SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?)',
+      [data.id, data.username, data.email]
+    );
+
+    if (existing.length > 0) {
+      const user = existing[0];
+      let newStreak = user.login_streak || 1;
+
+      if (user.last_login_date) {
+        const lastLoginObj = new Date(user.last_login_date);
+        const lastDateStr = `${lastLoginObj.getFullYear()}-${String(lastLoginObj.getMonth() + 1).padStart(2, '0')}-${String(lastLoginObj.getDate()).padStart(2, '0')}`;
+        if (lastDateStr !== todayStr) {
+          const dToday = new Date(todayStr).getTime();
+          const dLast = new Date(lastDateStr).getTime();
+          const diffCalendarDays = Math.round((dToday - dLast) / (1000 * 60 * 60 * 24));
+          newStreak = diffCalendarDays === 1 ? (user.login_streak || 1) + 1 : 1;
+        }
+      }
+
+      await pool.query(
+        'UPDATE users SET last_login_date = ?, login_streak = ?, avatar_url = ? WHERE id = ?',
+        [todayStr, newStreak, data.avatarUrl || user.avatar_url, user.id]
+      );
+
+      return {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role || 'user',
+        avatarUrl: data.avatarUrl || user.avatar_url,
+        lastLoginDate: todayStr,
+        loginStreak: newStreak
+      };
+    } else {
+      const dummyPasswordHash = await bcrypt.hash(`google_${Date.now()}_${Math.random()}`, 10);
+      await pool.query(
+        `INSERT INTO users (id, username, name, password_hash, role, avatar_url, last_login_date, login_streak)
+         VALUES (?, ?, ?, ?, 'user', ?, ?, 1)`,
+        [data.id, data.username, data.name || data.email, dummyPasswordHash, data.avatarUrl, todayStr]
+      );
+
+      if (data.email && data.email.includes('@')) {
+        EmailService.sendWelcomeEmail(data.email, data.username);
+      }
+
+      return {
+        id: data.id,
+        username: data.username,
+        name: data.name || data.email,
+        role: 'user',
+        avatarUrl: data.avatarUrl,
+        lastLoginDate: todayStr,
+        loginStreak: 1
+      };
+    }
+  }
+
   public static async registerUser(username: string, email: string, password: string): Promise<User> {
     const [existing]: any = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [username]);
     if (existing.length > 0) {

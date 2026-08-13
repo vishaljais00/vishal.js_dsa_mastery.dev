@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { OAuth2Client } from 'google-auth-library';
 import { ExecutionService } from '../services/execution.service';
 import { MysqlStorageService } from '../services/mysql-storage.service';
 import { CacheService } from '../services/cache.service';
+
+const googleOAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || '305407856293-5gdm6e769q8jdphd1tmq6c18gmfa9cio.apps.googleusercontent.com');
 
 const router = Router();
 
@@ -45,6 +48,41 @@ router.post('/auth/register', authLimiter, async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+router.post('/auth/google', authLimiter, async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: 'Google ID token is required' });
+    }
+
+    const ticket = await googleOAuthClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID || '305407856293-5gdm6e769q8jdphd1tmq6c18gmfa9cio.apps.googleusercontent.com'
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(400).json({ error: 'Invalid Google token payload' });
+    }
+
+    const { sub: googleId, email, name, picture } = payload;
+    const username = email ? email.split('@')[0] : `user_${googleId.slice(0, 8)}`;
+
+    const user = await MysqlStorageService.upsertGoogleUser({
+      id: `google_${googleId}`,
+      username,
+      name: name || username,
+      email: email || '',
+      avatarUrl: picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+    });
+
+    res.json({ token: `token_${user.id}`, user });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Google authentication failed' });
+  }
+});
+
 
 router.post('/auth/update-password', async (req, res) => {
   try {

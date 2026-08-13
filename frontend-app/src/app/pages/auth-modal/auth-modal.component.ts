@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Output, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
@@ -126,10 +126,19 @@ import { DsaService } from '../../core/services/dsa.service';
           </div>
 
           <button type="submit" [disabled]="loading" class="btn-primary w-full justify-center py-3 text-sm mt-2">
-            <i class="fa-solid" [class.fa-paper-plane]="!otpSent" [class.fa-key]="otpSent"></i>
-            {{ otpSent ? 'Reset Password' : 'Send OTP Code' }}
+            <i class="fa-solid fa-paper-plane"></i>
+            {{ getSubmitButtonText() }}
           </button>
         </form>
+
+        <!-- Google Sign-In Button Container -->
+        <div *ngIf="mode !== 'forgot'" class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div class="text-center mb-2">
+            <span class="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wide">Or Sign In with</span>
+          </div>
+          <div id="googleSignInBtn" class="w-full flex justify-center min-h-[40px]"></div>
+        </div>
+
 
         <!-- Toggle Links -->
         <div class="mt-5 text-center space-y-1">
@@ -148,7 +157,7 @@ import { DsaService } from '../../core/services/dsa.service';
     </div>
   `
 })
-export class AuthModalComponent {
+export class AuthModalComponent implements AfterViewInit {
   @Output() close = new EventEmitter<void>();
 
   mode: 'login' | 'register' | 'forgot' = 'login';
@@ -167,6 +176,56 @@ export class AuthModalComponent {
     private authService: AuthService,
     private dsaService: DsaService
   ) {}
+
+  ngAfterViewInit() {
+    setTimeout(() => this.initGoogleSignIn(), 200);
+  }
+
+  private initGoogleSignIn() {
+    if (typeof window !== 'undefined' && (window as any).google) {
+      try {
+        (window as any).google.accounts.id.initialize({
+          client_id: '305407856293-5gdm6e769q8jdphd1tmq6c18gmfa9cio.apps.googleusercontent.com',
+          callback: (response: any) => this.handleGoogleCredential(response)
+        });
+
+        const container = document.getElementById('googleSignInBtn');
+        if (container) {
+          (window as any).google.accounts.id.renderButton(container, {
+            theme: 'outline',
+            size: 'large',
+            width: '280',
+            shape: 'pill'
+          });
+        }
+      } catch (err) {
+        console.warn('Google Identity SDK notice:', err);
+      }
+    }
+  }
+
+  handleGoogleCredential(response: any) {
+    if (!response || !response.credential) return;
+    this.loading = true;
+    this.errorMsg = '';
+    this.authService.loginWithGoogle(response.credential).subscribe({
+      next: (res) => {
+        this.loading = false;
+        this.dsaService.fetchCurriculum(res.user.id).subscribe();
+        this.close.emit();
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMsg = err.error?.error || 'Google Sign-In failed';
+      }
+    });
+  }
+
+  getSubmitButtonText(): string {
+    if (this.mode === 'register') return 'Create Account';
+    if (this.mode === 'forgot') return this.otpSent ? 'Reset Password' : 'Send OTP Code';
+    return 'Sign In';
+  }
 
   submitForm() {
     this.errorMsg = '';

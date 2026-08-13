@@ -56,6 +56,16 @@ export class AuthService {
     );
   }
 
+  loginWithGoogle(googleToken: string): Observable<{ token: string; user: User }> {
+    return this.http.post<{ token: string; user: User }>(`${this.apiUrl}/google`, { token: googleToken }).pipe(
+      tap((res: { token: string; user: User }) => {
+        this.currentUserSignal.set(res.user);
+        localStorage.setItem('dsa_user', JSON.stringify(res.user));
+      })
+    );
+  }
+
+
   logout() {
     this.currentUserSignal.set(null);
     localStorage.removeItem('dsa_user');

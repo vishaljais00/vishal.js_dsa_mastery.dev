@@ -1,6 +1,6 @@
 {
   "name": "js-dsa-backend",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Backend API and Code Execution Sandbox Engine for JS DSA Platform",
   "main": "dist/server.js",
   "scripts": {
@@ -17,6 +17,7 @@
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "express-rate-limit": "^8.6.2",
+    "google-auth-library": "^11.0.2",
     "ioredis": "^6.0.0",
     "mysql2": "^3.23.2",
     "nodemailer": "^9.0.5"
