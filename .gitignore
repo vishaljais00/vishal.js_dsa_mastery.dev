@@ -29,3 +29,6 @@ Thumbs.db
 # Temp Files
 tmp/
 *.tmp
+
+.vercel
+.env*

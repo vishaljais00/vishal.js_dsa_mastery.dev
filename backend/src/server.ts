@@ -10,30 +10,46 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+let isDbInitialized = false;
+let dbInitPromise: Promise<void> | null = null;
+
+async function ensureDbInit() {
+  if (isDbInitialized) return;
+  if (!dbInitPromise) {
+    dbInitPromise = (async () => {
+      try {
+        await MysqlStorageService.initDatabase();
+        isDbInitialized = true;
+        console.log(`✅ [Database] Initialized and connected to MySQL successfully.`);
+      } catch (err: any) {
+        console.error(`❌ [Database Error] Could not connect to MySQL: ${err.message}`);
+        console.error(`💡 Tip: Make sure DATABASE_URL or DB_HOST, DB_USER, DB_PASS, and DB_NAME environment variables are set in your cloud dashboard.`);
+      } finally {
+        dbInitPromise = null;
+      }
+    })();
+  }
+  await dbInitPromise;
+}
+
+app.use(async (req, res, next) => {
+  await ensureDbInit();
+  next();
+});
+
 app.use('/api', apiRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
 
-async function startServer() {
+if (require.main === module || process.env.PORT) {
   app.listen(PORT, () => {
     console.log(`=================================================`);
     console.log(`🚀 JS DSA Backend Server running on port ${PORT}`);
     console.log(`=================================================`);
   });
-
-  try {
-    await MysqlStorageService.initDatabase();
-    console.log(`✅ [Database] Initialized and connected to MySQL successfully.`);
-  } catch (err: any) {
-    console.error(`❌ [Database Error] Could not connect to MySQL at ${process.env['DB_HOST'] || 'localhost'}:${process.env['DB_PORT'] || 3306}: ${err.message}`);
-    console.error(`💡 Tip: Make sure DB_HOST, DB_USER, DB_PASS, and DB_NAME environment variables are set in your cloud dashboard.`);
-  }
-}
-
-if (process.env.NODE_ENV !== 'production' || require.main === module) {
-  startServer();
 }
 
 export default app;
+

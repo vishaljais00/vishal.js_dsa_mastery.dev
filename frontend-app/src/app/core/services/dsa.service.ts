@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface TestCase {
   input: string;
@@ -72,7 +73,7 @@ export interface CommunitySolution {
   providedIn: 'root'
 })
 export class DsaService {
-  private apiUrl = 'http://localhost:3000/api';
+  private apiUrl = environment.apiUrl;
 
   public curriculumSignal = signal<DayPlan[]>([]);
   public solvedCountSignal = signal<number>(0);
