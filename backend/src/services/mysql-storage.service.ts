@@ -66,6 +66,7 @@ export class MysqlStorageService {
         id VARCHAR(64) PRIMARY KEY,
         username VARCHAR(64) NOT NULL UNIQUE,
         name VARCHAR(128) NOT NULL,
+        email VARCHAR(128),
         password_hash VARCHAR(255) NOT NULL,
         role VARCHAR(16) DEFAULT 'user',
         avatar_url TEXT,
@@ -82,6 +83,9 @@ export class MysqlStorageService {
         console.log("✅ Successfully added 'email' column to MySQL users table.");
       }
       _emailColumnExistsCache = true;
+
+      // Migrate existing rows: Copy name to email if name is an email address
+      await pool.query("UPDATE users SET email = name WHERE (email IS NULL OR email = '') AND name LIKE '%@%'");
     } catch (err: any) {
       console.warn("Notice checking/adding email column in MySQL:", err?.message);
     }
@@ -417,6 +421,7 @@ export class MysqlStorageService {
       id: user.id,
       username: user.username,
       name: user.name,
+      email: user.email || (user.name && user.name.includes('@') ? user.name : undefined),
       role: user.role,
       avatarUrl: user.avatar_url,
       lastLoginDate: todayStr,

@@ -25,6 +25,9 @@ import { DsaService } from '../../core/services/dsa.service';
             <span *ngIf="user.role === 'admin'" class="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">ADMIN</span>
           </h2>
           <p class="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-bold mt-1">&#64;{{user.username}}</p>
+          <p *ngIf="user.email || (user.name && user.name.includes('@'))" class="text-xs font-mono text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <i class="fa-solid fa-envelope mr-1 text-slate-400"></i>{{user.email || user.name}}
+          </p>
 
           <!-- Login Streak Display Card -->
           <div class="mt-4 bg-gradient-to-r from-amber-500 to-rose-600 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between">

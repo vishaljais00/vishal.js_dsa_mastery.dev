@@ -342,7 +342,7 @@ export interface AdminTestCase {
                     <img [src]="u.avatarUrl" class="w-8 h-8 rounded-full border border-indigo-300">
                     <div>
                       <span class="font-bold text-slate-900 dark:text-white block font-mono">{{u.username}}</span>
-                      <span class="text-[10px] text-slate-400">{{u.name}}</span>
+                      <span class="text-[10px] text-slate-400">{{u.email || u.name}}</span>
                     </div>
                   </td>
                   <td class="py-3 px-4">

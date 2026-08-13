@@ -10,13 +10,18 @@ export class EmailService {
     if (this.transporter) return this.transporter;
 
     if (process.env['SMTP_HOST'] && process.env['SMTP_USER']) {
+      const cleanPass = (process.env['SMTP_PASS'] || '').replace(/["'\s]/g, '');
       this.transporter = nodemailer.createTransport({
         host: process.env['SMTP_HOST'],
         port: Number(process.env['SMTP_PORT']) || 587,
-        secure: false,
+        secure: Number(process.env['SMTP_PORT']) === 465,
+        requireTLS: true,
         auth: {
           user: process.env['SMTP_USER'],
-          pass: process.env['SMTP_PASS']
+          pass: cleanPass
+        },
+        tls: {
+          rejectUnauthorized: false
         }
       });
     } else {
