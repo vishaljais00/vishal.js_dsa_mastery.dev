@@ -1,6 +1,6 @@
 {
   "name": "js-dsa-backend",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Backend API and Code Execution Sandbox Engine for JS DSA Platform",
   "main": "dist/server.js",
   "scripts": {
