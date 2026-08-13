@@ -39,17 +39,52 @@ import { AuthService } from '../../core/services/auth.service';
 
         <!-- Filter & Search Toolbar -->
         <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 mb-10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-          <div class="relative w-full md:w-96">
+          
+          <!-- Category Track Switcher -->
+          <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
+            <button 
+              (click)="setTrack('ALL')"
+              [class.bg-indigo-600]="selectedTrack === 'ALL'"
+              [class.text-white]="selectedTrack === 'ALL'"
+              [class.text-slate-600]="selectedTrack !== 'ALL'"
+              [class.dark:text-slate-300]="selectedTrack !== 'ALL'"
+              class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-globe"></i> All
+            </button>
+            <button 
+              (click)="setTrack('DSA')"
+              [class.bg-indigo-600]="selectedTrack === 'DSA'"
+              [class.text-white]="selectedTrack === 'DSA'"
+              [class.text-slate-600]="selectedTrack !== 'DSA'"
+              [class.dark:text-slate-300]="selectedTrack !== 'DSA'"
+              class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-puzzle-piece"></i> DSA Track
+            </button>
+            <button 
+              (click)="setTrack('JS')"
+              [class.bg-amber-500]="selectedTrack === 'JS'"
+              [class.text-white]="selectedTrack === 'JS'"
+              [class.text-slate-600]="selectedTrack !== 'JS'"
+              [class.dark:text-slate-300]="selectedTrack !== 'JS'"
+              class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5"
+            >
+              <i class="fa-brands fa-js"></i> JS Track
+            </button>
+          </div>
+
+          <div class="relative w-full md:w-80">
             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
             <input 
               type="text" 
               [(ngModel)]="searchQuery" 
-              placeholder="Search problems by name or pattern tag..."
+              placeholder="Search problems or patterns..."
               class="w-full bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-medium"
             />
           </div>
 
-          <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+          <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto">
             <span class="text-xs font-mono text-slate-400 font-bold mr-1 shrink-0">Difficulty:</span>
             <button 
               *ngFor="let diff of ['ALL', 'Easy', 'Medium', 'Hard']"
@@ -214,6 +249,7 @@ export class RoadmapComponent implements OnInit {
 
   searchQuery: string = '';
   selectedDifficulty: string = 'ALL';
+  selectedTrack: 'ALL' | 'DSA' | 'JS' = 'ALL';
 
   constructor(
     public dsaService: DsaService,
@@ -221,9 +257,19 @@ export class RoadmapComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.loadCurriculum();
+  }
+
+  loadCurriculum() {
     const currentUser = this.authService.currentUserSignal();
     const userId = currentUser ? currentUser.id : '';
-    this.dsaService.fetchCurriculum(userId).subscribe();
+    const category = this.selectedTrack === 'ALL' ? '' : this.selectedTrack;
+    this.dsaService.fetchCurriculum(userId, category).subscribe();
+  }
+
+  setTrack(track: 'ALL' | 'DSA' | 'JS') {
+    this.selectedTrack = track;
+    this.loadCurriculum();
   }
 
   filterProblems(problems: any[]): any[] {
@@ -234,7 +280,8 @@ export class RoadmapComponent implements OnInit {
         (p.patternTag && p.patternTag.toLowerCase().includes(this.searchQuery.toLowerCase()));
       
       const matchesDiff = this.selectedDifficulty === 'ALL' || p.difficulty === this.selectedDifficulty;
-      return matchesSearch && matchesDiff;
+      const matchesTrack = this.selectedTrack === 'ALL' || (p.category || 'DSA') === this.selectedTrack;
+      return matchesSearch && matchesDiff && matchesTrack;
     });
   }
 

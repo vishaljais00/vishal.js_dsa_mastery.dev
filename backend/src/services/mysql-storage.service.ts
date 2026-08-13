@@ -1,5 +1,6 @@
 import { pool, initializeDatabase } from '../config/db';
 import { CURRICULUM_DATA } from '../data/curriculum';
+import { JS_CURRICULUM_DATA } from '../data/js-curriculum';
 
 export interface User {
   id: string;
@@ -15,6 +16,7 @@ export interface User {
 
 export interface Problem {
   id: string;
+  category?: 'DSA' | 'JS';
   dayNumber: number;
   weekNumber: number;
   title: string;
@@ -29,6 +31,34 @@ export interface Problem {
   isSolved?: boolean;
   savedCode?: string;
 }
+
+export interface GuidebookTopic {
+  id: string;
+  category: 'DSA' | 'JS';
+  title: string;
+  description: string;
+  icon: string;
+  orderIndex: number;
+  createdAt?: string;
+  subtopics?: GuidebookSubtopic[];
+}
+
+export interface GuidebookSubtopic {
+  id: string;
+  topicId: string;
+  title: string;
+  description: string;
+  contentMarkdown: string;
+  coverImageUrl?: string;
+  videoUrl?: string;
+  codeExample?: string;
+  isPublished: boolean;
+  linkedProblemIds?: string[];
+  orderIndex: number;
+  isRead?: boolean;
+  createdAt?: string;
+}
+
 
 export interface CommunitySolution {
   id: string;
@@ -61,20 +91,30 @@ async function checkEmailColumnExists(): Promise<boolean> {
 
 export class MysqlStorageService {
   public static async initDatabase() {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id VARCHAR(64) PRIMARY KEY,
-        username VARCHAR(64) NOT NULL UNIQUE,
-        name VARCHAR(128) NOT NULL,
-        email VARCHAR(128),
-        password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(16) DEFAULT 'user',
-        avatar_url TEXT,
-        last_login_date DATE,
-        login_streak INT DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    try {
+      await pool.query('SET FOREIGN_KEY_CHECKS = 0');
+    } catch (e) {}
+
+    try {
+      await pool.query("ALTER TABLE mock_test_results DROP FOREIGN KEY mock_test_results_ibfk_1");
+    } catch (e) {}
+
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id VARCHAR(64) PRIMARY KEY,
+          username VARCHAR(64) NOT NULL UNIQUE,
+          name VARCHAR(128) NOT NULL,
+          email VARCHAR(128),
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(16) DEFAULT 'user',
+          avatar_url TEXT,
+          last_login_date DATE,
+          login_streak INT DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e: any) { console.warn('users table check:', e?.message); }
 
     try {
       const [cols]: any = await pool.query("SHOW COLUMNS FROM users LIKE 'email'");
@@ -83,97 +123,176 @@ export class MysqlStorageService {
         console.log("✅ Successfully added 'email' column to MySQL users table.");
       }
       _emailColumnExistsCache = true;
-
-      // Migrate existing rows: Copy name to email if name is an email address
       await pool.query("UPDATE users SET email = name WHERE (email IS NULL OR email = '') AND name LIKE '%@%'");
     } catch (err: any) {
       console.warn("Notice checking/adding email column in MySQL:", err?.message);
     }
 
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+          email_or_username VARCHAR(128) PRIMARY KEY,
+          otp_code VARCHAR(10) NOT NULL,
+          expires_at TIMESTAMP NOT NULL
+        )
+      `);
+    } catch (e: any) { console.warn('password_resets table check:', e?.message); }
 
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS problems (
+          id VARCHAR(64) PRIMARY KEY,
+          day_number INT NOT NULL,
+          week_number INT NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          difficulty VARCHAR(16) DEFAULT 'Easy',
+          pattern_tag VARCHAR(64),
+          description TEXT,
+          starter_code TEXT,
+          test_cases JSON,
+          solution_hint TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e: any) { console.warn('problems table check:', e?.message); }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS password_resets (
-        email_or_username VARCHAR(128) PRIMARY KEY,
-        otp_code VARCHAR(10) NOT NULL,
-        expires_at TIMESTAMP NOT NULL
-      )
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_progress (
+          user_id VARCHAR(64) NOT NULL,
+          problem_id VARCHAR(64) NOT NULL,
+          is_solved BOOLEAN DEFAULT FALSE,
+          saved_code TEXT,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (user_id, problem_id)
+        )
+      `);
+    } catch (e: any) { console.warn('user_progress table check:', e?.message); }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS problems (
-        id VARCHAR(64) PRIMARY KEY,
-        day_number INT NOT NULL,
-        week_number INT NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        difficulty VARCHAR(16) DEFAULT 'Easy',
-        pattern_tag VARCHAR(64),
-        description TEXT,
-        starter_code TEXT,
-        test_cases JSON,
-        solution_hint TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_problem_visits (
+          user_id VARCHAR(64) NOT NULL,
+          problem_id VARCHAR(64) NOT NULL,
+          visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (user_id, problem_id)
+        )
+      `);
+    } catch (e: any) { console.warn('user_problem_visits table check:', e?.message); }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_progress (
-        user_id VARCHAR(64) NOT NULL,
-        problem_id VARCHAR(64) NOT NULL,
-        is_solved BOOLEAN DEFAULT FALSE,
-        saved_code TEXT,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (user_id, problem_id)
-      )
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS mock_test_results (
+          id VARCHAR(64) PRIMARY KEY,
+          user_id VARCHAR(64) NOT NULL,
+          score INT NOT NULL,
+          total_questions INT NOT NULL,
+          time_spent_seconds INT NOT NULL,
+          answers_json JSON,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e: any) { console.warn('mock_test_results table check:', e?.message); }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_problem_visits (
-        user_id VARCHAR(64) NOT NULL,
-        problem_id VARCHAR(64) NOT NULL,
-        visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (user_id, problem_id)
-      )
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS mock_test_config (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          problem_ids JSON NOT NULL,
+          time_limit_minutes INT DEFAULT 95,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e: any) { console.warn('mock_test_config table check:', e?.message); }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS mock_test_results (
-        id VARCHAR(64) PRIMARY KEY,
-        user_id VARCHAR(64) NOT NULL,
-        score INT NOT NULL,
-        total_questions INT NOT NULL,
-        time_spent_seconds INT NOT NULL,
-        answers_json JSON,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    try {
+      const [cols]: any = await pool.query("SHOW COLUMNS FROM problems LIKE 'category'");
+      if (!cols || cols.length === 0) {
+        await pool.query("ALTER TABLE problems ADD COLUMN category VARCHAR(16) DEFAULT 'DSA'");
+        console.log("✅ Successfully added 'category' column to MySQL problems table.");
+      }
+    } catch (err: any) {
+      console.warn("Notice checking/adding category column in MySQL:", err?.message);
+    }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS mock_test_config (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        problem_ids JSON NOT NULL,
-        time_limit_minutes INT DEFAULT 95,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS guidebook_topics (
+          id VARCHAR(64) PRIMARY KEY,
+          category VARCHAR(16) NOT NULL DEFAULT 'JS',
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          icon VARCHAR(64) DEFAULT 'book',
+          order_index INT NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('✅ guidebook_topics table ready.');
+    } catch (e: any) { console.warn('guidebook_topics table check:', e?.message); }
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS community_solutions (
-        id VARCHAR(64) PRIMARY KEY,
-        problem_id VARCHAR(64) NOT NULL,
-        user_id VARCHAR(64) NOT NULL,
-        username VARCHAR(64) NOT NULL,
-        avatar_url TEXT,
-        code TEXT NOT NULL,
-        runtime_ms INT DEFAULT 0,
-        pattern_tag VARCHAR(64) DEFAULT 'JavaScript Solution',
-        upvotes INT DEFAULT 0,
-        upvoted_by JSON,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS guidebook_subtopics (
+          id VARCHAR(64) PRIMARY KEY,
+          topic_id VARCHAR(64) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          description VARCHAR(512),
+          content_markdown LONGTEXT NOT NULL,
+          cover_image_url VARCHAR(512),
+          video_url VARCHAR(512),
+          code_example TEXT,
+          is_published BOOLEAN DEFAULT TRUE,
+          linked_problem_ids JSON,
+          order_index INT NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e: any) { console.warn('guidebook_subtopics table check:', e?.message); }
+
+    try {
+      const [vcols]: any = await pool.query("SHOW COLUMNS FROM guidebook_subtopics LIKE 'video_url'");
+      if (!vcols || vcols.length === 0) {
+        await pool.query("ALTER TABLE guidebook_subtopics ADD COLUMN video_url VARCHAR(512) AFTER cover_image_url");
+        console.log("✅ Added video_url column to guidebook_subtopics.");
+      }
+    } catch (e: any) { console.warn('video_url column check:', e?.message); }
+
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_guidebook_progress (
+          user_id VARCHAR(64) NOT NULL,
+          subtopic_id VARCHAR(64) NOT NULL,
+          is_read BOOLEAN DEFAULT TRUE,
+          completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (user_id, subtopic_id)
+        )
+      `);
+    } catch (e: any) { console.warn('user_guidebook_progress table check:', e?.message); }
+
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS community_solutions (
+          id VARCHAR(64) PRIMARY KEY,
+          problem_id VARCHAR(64) NOT NULL,
+          user_id VARCHAR(64) NOT NULL,
+          username VARCHAR(64) NOT NULL,
+          avatar_url TEXT,
+          code TEXT NOT NULL,
+          runtime_ms INT DEFAULT 0,
+          pattern_tag VARCHAR(64) DEFAULT 'JavaScript Solution',
+          upvotes INT DEFAULT 0,
+          upvoted_by JSON,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e: any) { console.warn('community_solutions table check:', e?.message); }
+
+    try {
+      await pool.query('SET FOREIGN_KEY_CHECKS = 1');
+    } catch (e) {}
 
     await this.seedDefaultData();
+    await this.seedDefaultGuidebookData();
   }
 
   private static async seedDefaultData() {
@@ -187,30 +306,34 @@ export class MysqlStorageService {
       console.log('✅ Default Admin user created (username: admin / password: admin123)');
     }
 
-    const [probs]: any = await pool.query('SELECT COUNT(*) as count FROM problems');
-    if (probs[0].count < 25) {
-      await pool.query('TRUNCATE TABLE problems');
+    const [dsaCount]: any = await pool.query("SELECT COUNT(*) as count FROM problems WHERE category = 'DSA'");
+    if (dsaCount[0].count < 30) {
+      await pool.query("DELETE FROM problems WHERE category = 'DSA'");
       for (const day of CURRICULUM_DATA) {
         for (const p of day.problems) {
           await pool.query(
-            `INSERT IGNORE INTO problems (id, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [
-              p.id,
-              day.dayNumber,
-              day.weekNumber,
-              p.title,
-              p.difficulty,
-              p.patternTag,
-              p.description,
-              p.starterCode,
-              JSON.stringify(p.testCases),
-              p.solutionHint || ''
-            ]
+            `INSERT IGNORE INTO problems (id, category, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
+             VALUES (?, 'DSA', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [p.id, day.dayNumber, day.weekNumber, p.title, p.difficulty, p.patternTag, p.description, p.starterCode, JSON.stringify(p.testCases), p.solutionHint || '']
           );
         }
       }
-      console.log('✅ All Phase 1, 2, 3 & 4 curriculum problems seeded into MySQL.');
+      console.log('✅ DSA curriculum problems seeded into MySQL.');
+    }
+
+    const [jsCount]: any = await pool.query("SELECT COUNT(*) as count FROM problems WHERE category = 'JS'");
+    if (jsCount[0].count < 30) {
+      await pool.query("DELETE FROM problems WHERE category = 'JS'");
+      for (const day of JS_CURRICULUM_DATA) {
+        for (const p of day.problems) {
+          await pool.query(
+            `INSERT IGNORE INTO problems (id, category, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
+             VALUES (?, 'JS', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [p.id, day.dayNumber, day.weekNumber, p.title, p.difficulty, p.patternTag, p.description, p.starterCode, JSON.stringify(p.testCases), p.solutionHint || '']
+          );
+        }
+      }
+      console.log('✅ JS Mastery curriculum problems seeded into MySQL.');
     }
   }
 
@@ -538,21 +661,25 @@ export class MysqlStorageService {
     }
 
     // Group problems by day
-    const dayMap = new Map<number, any>();
+    const dayMap = new Map<string, any>();
     const now = new Date().getTime();
 
     for (const p of problems) {
       const dayNum = p.day_number;
-      if (!dayMap.has(dayNum)) {
-        const templateDay = CURRICULUM_DATA.find(d => d.dayNumber === dayNum) || {
+      const cat = p.category || 'DSA';
+      const mapKey = `${cat}:${dayNum}`; // composite key prevents DSA/JS day collision
+      if (!dayMap.has(mapKey)) {
+        const curriculumSet = cat === 'JS' ? JS_CURRICULUM_DATA : CURRICULUM_DATA;
+        const templateDay = curriculumSet.find(d => d.dayNumber === dayNum) || {
           dayNumber: dayNum,
           weekNumber: p.week_number,
           title: `Day ${dayNum} Practice`,
           learnTopics: ['Core JavaScript Problem Solving']
         };
 
-        dayMap.set(dayNum, {
+        dayMap.set(mapKey, {
           ...templateDay,
+          category: cat,
           problems: []
         });
       }
@@ -563,8 +690,9 @@ export class MysqlStorageService {
       
       const isNew = isLessThanSevenDaysOld && !isVisitedOrSolved;
 
-      dayMap.get(dayNum).problems.push({
+      dayMap.get(mapKey).problems.push({
         id: p.id,
+        category: p.category || 'DSA',
         title: p.title,
         difficulty: p.difficulty,
         patternTag: p.pattern_tag,
@@ -764,10 +892,11 @@ export class MysqlStorageService {
   }
 
   // --- ADMIN PANEL METHODS ---
-  public static async addProblemByAdmin(problem: {
-    title: string;
+  public static async createProblem(problem: {
+    category?: 'DSA' | 'JS';
     dayNumber: number;
     weekNumber: number;
+    title: string;
     difficulty: 'Easy' | 'Medium' | 'Hard';
     patternTag: string;
     description: string;
@@ -776,11 +905,13 @@ export class MysqlStorageService {
     solutionHint?: string;
   }): Promise<Problem> {
     const id = `prob_${Date.now()}`;
+    const category = problem.category || 'DSA';
     await pool.query(
-      `INSERT INTO problems (id, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      `INSERT INTO problems (id, category, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         id,
+        category,
         problem.dayNumber,
         problem.weekNumber,
         problem.title,
@@ -793,7 +924,7 @@ export class MysqlStorageService {
       ]
     );
 
-    return { ...problem, id, isNew: true };
+    return { ...problem, category, id, isNew: true };
   }
 
   public static async getAllUsersActivity(): Promise<any[]> {
@@ -857,12 +988,14 @@ export class MysqlStorageService {
 
   // --- UPDATE PROBLEM (Admin Edit) ---
   public static async updateProblem(id: string, data: {
+    category?: 'DSA' | 'JS';
     title?: string; description?: string; difficulty?: string;
     patternTag?: string; solutionHint?: string; testCases?: any[];
   }): Promise<void> {
     const fields: string[] = [];
     const values: any[] = [];
 
+    if (data.category !== undefined)    { fields.push('category = ?');     values.push(data.category); }
     if (data.title !== undefined)       { fields.push('title = ?');        values.push(data.title); }
     if (data.description !== undefined) { fields.push('description = ?');  values.push(data.description); }
     if (data.difficulty !== undefined)  { fields.push('difficulty = ?');   values.push(data.difficulty); }
@@ -935,6 +1068,404 @@ export class MysqlStorageService {
        ON DUPLICATE KEY UPDATE note_text = VALUES(note_text), updated_at = CURRENT_TIMESTAMP`,
       [userId, problemId, noteText]
     );
+  }
+
+  // --- GUIDEBOOK & BLOG CMS METHODS ---
+  private static async seedDefaultGuidebookData() {
+    try {
+      const [existing]: any = await pool.query('SELECT COUNT(*) as count FROM guidebook_topics');
+      if (existing[0].count > 0) return;
+
+      console.log('🌱 Seeding initial Guidebook Topics and Subtopics...');
+
+      // JS Topic 1: Async JS & Event Loop
+      const topicJsAsyncId = 'topic_js_async';
+      await pool.query(
+        `INSERT INTO guidebook_topics (id, category, title, description, icon, order_index) VALUES (?, 'JS', ?, ?, 'zap', 1)`,
+        [topicJsAsyncId, 'Asynchronous JavaScript & Event Loop', 'Master call stack, task queues, microtasks, event loop mechanics, and async/await patterns.']
+      );
+
+      const subtopic1Id = 'subtopic_event_loop';
+      const subtopic1Markdown = `# Deep Dive into JavaScript Event Loop & Task Queue
+
+JavaScript is a single-threaded language, meaning it executes code one line at a time on a single call stack. However, it handles non-blocking I/O efficiently using the **Event Loop**.
+
+## 1. The Event Loop Architecture
+The browser runtime consists of:
+- **Call Stack**: Where execution context stack is processed.
+- **Web APIs**: Background thread handling \`setTimeout\`, DOM events, and \`fetch\`.
+- **Microtask Queue**: High priority queue for \`Promise.then\`, \`queueMicrotask\`, and \`MutationObserver\`.
+- **Task Queue (Macrotask Queue)**: Queue for \`setTimeout\`, \`setInterval\`, and I/O callbacks.
+
+![JavaScript Event Loop Architecture](https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1000&q=80)
+*Figure 1: Conceptual visualization of the JavaScript Event Loop, Web APIs, and Microtask Queues.*
+
+## 2. Microtasks vs Macrotasks Execution Order
+
+Microtasks **always** take precedence over Macrotasks. The event loop empties the *entire* microtask queue before rendering UI or processing the next macrotask.
+
+\`\`\`javascript
+console.log('1: Synchronous Script Start');
+
+setTimeout(() => {
+  console.log('4: Macrotask Callback (setTimeout)');
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log('2: Microtask Callback (Promise 1)');
+}).then(() => {
+  console.log('3: Microtask Callback (Promise 2)');
+});
+
+console.log('5: Synchronous Script End');
+\`\`\`
+
+### Output Trace:
+\`\`\`text
+1: Synchronous Script Start
+5: Synchronous Script End
+2: Microtask Callback (Promise 1)
+3: Microtask Callback (Promise 2)
+4: Macrotask Callback (setTimeout)
+\`\`\`
+
+> [!TIP]
+> Always prefer \`queueMicrotask()\` when scheduling lightweight asynchronous work that must run before the next browser frame render.
+`;
+
+      await pool.query(
+        `INSERT INTO guidebook_subtopics (id, topic_id, title, description, content_markdown, cover_image_url, code_example, is_published, linked_problem_ids, order_index)
+         VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?, 1)`,
+        [
+          subtopic1Id,
+          topicJsAsyncId,
+          'Event Loop, Call Stack & Microtasks',
+          'Learn how single-threaded JavaScript handles concurrency with event loop queues.',
+          subtopic1Markdown,
+          'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1000&q=80',
+          `console.log('Start');\nPromise.resolve().then(() => console.log('Promise Microtask'));\nsetTimeout(() => console.log('Timeout Macrotask'), 0);\nconsole.log('End');`,
+          JSON.stringify(['two-sum'])
+        ]
+      );
+
+      // JS Topic 2: Closures & Lexical Scope
+      const topicJsClosuresId = 'topic_js_closures';
+      await pool.query(
+        `INSERT INTO guidebook_topics (id, category, title, description, icon, order_index) VALUES (?, 'JS', ?, ?, 'code', 2)`,
+        [topicJsClosuresId, 'Closures & Lexical Scope', 'Understand scope chain, lexical environment, private variables, and memory retainers.']
+      );
+
+      const subtopic2Id = 'subtopic_closures';
+      const subtopic2Markdown = `# Closures & Lexical Scoping in JavaScript
+
+A **closure** is the combination of a function bundled together with references to its surrounding state (lexical environment).
+
+## 1. How Closures Work
+
+In JavaScript, functions retain access to variables in their parent scope even after the parent function has finished executing.
+
+\`\`\`javascript
+function createCounter() {
+  let count = 0; // Private state retained by closure
+  return {
+    increment() {
+      count++;
+      return count;
+    },
+    decrement() {
+      count--;
+      return count;
+    },
+    getValue() {
+      return count;
+    }
+  };
+}
+
+const counter = createCounter();
+console.log(counter.increment()); // 1
+console.log(counter.increment()); // 2
+console.log(counter.getValue());   // 2
+\`\`\`
+
+![Closure Memory Diagram](https://images.unsplash.com/photo-1516259762381-22954d7d3ad2?auto=format&fit=crop&w=1000&q=80)
+*Figure 2: Memory scope chain retaining enclosed variables in heap allocation.*
+
+## 2. Practical Use Cases
+- **Data Encapsulation & Privacy**: Creating private variables without ES6 \`#private\` fields.
+- **Currying & Partial Application**: Pre-filling arguments for reusable utility functions.
+- **Debounce and Throttle**: Retaining timer IDs across rapid event calls.
+`;
+
+      await pool.query(
+        `INSERT INTO guidebook_subtopics (id, topic_id, title, description, content_markdown, cover_image_url, code_example, is_published, linked_problem_ids, order_index)
+         VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?, 1)`,
+        [
+          subtopic2Id,
+          topicJsClosuresId,
+          'Lexical Scope & Private State',
+          'Learn how closures retain outer variable scopes for data encapsulation.',
+          subtopic2Markdown,
+          'https://images.unsplash.com/photo-1516259762381-22954d7d3ad2?auto=format&fit=crop&w=1000&q=80',
+          `function makeMultiplier(multiplier) {\n  return function(x) {\n    return x * multiplier;\n  };\n}\nconst double = makeMultiplier(2);\nconsole.log(double(5)); // 10`,
+          JSON.stringify(['valid-parentheses'])
+        ]
+      );
+
+      // DSA Topic 1: Two Pointers Pattern
+      const topicDsaPointersId = 'topic_dsa_two_pointers';
+      await pool.query(
+        `INSERT INTO guidebook_topics (id, category, title, description, icon, order_index) VALUES (?, 'DSA', ?, ?, 'git-merge', 1)`,
+        [topicDsaPointersId, 'Two Pointers & Sliding Window', 'Master optimal pointer patterns for array and string algorithmic challenges.']
+      );
+
+      const subtopicDsa1Id = 'subtopic_two_pointers';
+      const subtopicDsa1Markdown = `# Mastering the Two Pointers Technique
+
+The **Two Pointers** technique is a fundamental algorithmic pattern where two indices iterate across a data structure simultaneously.
+
+## 1. Convergence Pattern (Opposite Ends)
+
+Used primarily on **sorted arrays** to find pairs or ranges in $O(N)$ time instead of $O(N^2)$ brute force.
+
+\`\`\`javascript
+function twoSumSorted(numbers, target) {
+  let left = 0;
+  let right = numbers.length - 1;
+
+  while (left < right) {
+    const currentSum = numbers[left] + numbers[right];
+    if (currentSum === target) {
+      return [left + 1, right + 1];
+    } else if (currentSum < target) {
+      left++; // Need larger sum
+    } else {
+      right--; // Need smaller sum
+    }
+  }
+  return [];
+}
+\`\`\`
+
+![Two Pointers Convergence](https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1000&q=80)
+*Figure 3: Two Pointers converging from opposite ends of a sorted array.*
+`;
+
+      await pool.query(
+        `INSERT INTO guidebook_subtopics (id, topic_id, title, description, content_markdown, cover_image_url, code_example, is_published, linked_problem_ids, order_index)
+         VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?, 1)`,
+        [
+          subtopicDsa1Id,
+          topicDsaPointersId,
+          'Opposite End & Fast/Slow Pointers',
+          'Learn how to solve array & string problems in O(N) linear time.',
+          subtopicDsa1Markdown,
+          'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1000&q=80',
+          `let left = 0, right = arr.length - 1;\nwhile(left < right) {\n  // compare elements\n  left++; right--;\n}`,
+          JSON.stringify(['two-sum', '3sum'])
+        ]
+      );
+
+      console.log('✅ Guidebook Topics and Subtopics seeded successfully.');
+    } catch (err: any) {
+      console.error('Error seeding guidebook data:', err?.message);
+    }
+  }
+
+  // --- PUBLIC & ADMIN GUIDEBOOK API METHODS ---
+  public static async getGuidebookTopics(category?: 'DSA' | 'JS', userId?: string): Promise<GuidebookTopic[]> {
+    let query = 'SELECT * FROM guidebook_topics';
+    const params: any[] = [];
+    if (category && category !== ('ALL' as any)) {
+      query += ' WHERE category = ?';
+      params.push(category);
+    }
+    query += ' ORDER BY order_index ASC, created_at ASC';
+    const [topics]: any = await pool.query(query, params);
+
+    const readSet = new Set<string>();
+    if (userId && userId !== 'user_guest' && userId !== 'null') {
+      const [prog]: any = await pool.query(
+        'SELECT subtopic_id FROM user_guidebook_progress WHERE user_id = ? AND is_read = TRUE',
+        [userId]
+      );
+      for (const p of prog) readSet.add(p.subtopic_id);
+    }
+
+    const result: GuidebookTopic[] = [];
+    for (const t of topics) {
+      const [subtopics]: any = await pool.query(
+        'SELECT * FROM guidebook_subtopics WHERE topic_id = ? ORDER BY order_index ASC, created_at ASC',
+        [t.id]
+      );
+      const parsedSubtopics = subtopics.map((sub: any) => ({
+        id: sub.id,
+        topicId: sub.topic_id,
+        title: sub.title,
+        description: sub.description,
+        contentMarkdown: sub.content_markdown,
+        coverImageUrl: sub.cover_image_url,
+        videoUrl: sub.video_url,
+        codeExample: sub.code_example,
+        isPublished: !!sub.is_published,
+        linkedProblemIds: typeof sub.linked_problem_ids === 'string' ? JSON.parse(sub.linked_problem_ids) : (sub.linked_problem_ids || []),
+        orderIndex: sub.order_index,
+        isRead: readSet.has(sub.id),
+        createdAt: sub.created_at
+      }));
+      result.push({
+        id: t.id,
+        category: t.category,
+        title: t.title,
+        description: t.description,
+        icon: t.icon,
+        orderIndex: t.order_index,
+        createdAt: t.created_at,
+        subtopics: parsedSubtopics
+      });
+    }
+
+    return result;
+  }
+
+  public static async getGuidebookSubtopic(subtopicId: string, userId?: string): Promise<GuidebookSubtopic | null> {
+    const [rows]: any = await pool.query('SELECT * FROM guidebook_subtopics WHERE id = ?', [subtopicId]);
+    if (rows.length === 0) return null;
+
+    const sub = rows[0];
+    let isRead = false;
+
+    if (userId && userId !== 'user_guest' && userId !== 'null') {
+      const [prog]: any = await pool.query('SELECT is_read FROM user_guidebook_progress WHERE user_id = ? AND subtopic_id = ?', [userId, subtopicId]);
+      if (prog.length > 0) isRead = !!prog[0].is_read;
+    }
+
+    return {
+      id: sub.id,
+      topicId: sub.topic_id,
+      title: sub.title,
+      description: sub.description,
+      contentMarkdown: sub.content_markdown,
+      coverImageUrl: sub.cover_image_url,
+      videoUrl: sub.video_url,
+      codeExample: sub.code_example,
+      isPublished: !!sub.is_published,
+      linkedProblemIds: typeof sub.linked_problem_ids === 'string' ? JSON.parse(sub.linked_problem_ids) : (sub.linked_problem_ids || []),
+      orderIndex: sub.order_index,
+      isRead,
+      createdAt: sub.created_at
+    };
+  }
+
+  public static async createGuidebookTopic(data: { category: 'DSA' | 'JS'; title: string; description: string; icon?: string; orderIndex?: number }): Promise<GuidebookTopic> {
+    const id = `topic_${Date.now()}`;
+    await pool.query(
+      `INSERT INTO guidebook_topics (id, category, title, description, icon, order_index) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, data.category || 'JS', data.title, data.description || '', data.icon || 'book', data.orderIndex || 0]
+    );
+    return { id, category: data.category, title: data.title, description: data.description, icon: data.icon || 'book', orderIndex: data.orderIndex || 0, subtopics: [] };
+  }
+
+  public static async updateGuidebookTopic(id: string, data: Partial<GuidebookTopic>): Promise<void> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (data.category !== undefined) { fields.push('category = ?'); values.push(data.category); }
+    if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
+    if (data.description !== undefined) { fields.push('description = ?'); values.push(data.description); }
+    if (data.icon !== undefined) { fields.push('icon = ?'); values.push(data.icon); }
+    if (data.orderIndex !== undefined) { fields.push('order_index = ?'); values.push(data.orderIndex); }
+
+    if (fields.length === 0) return;
+    values.push(id);
+    await pool.query(`UPDATE guidebook_topics SET ${fields.join(', ')} WHERE id = ?`, values);
+  }
+
+  public static async deleteGuidebookTopic(id: string): Promise<void> {
+    await pool.query('DELETE FROM guidebook_topics WHERE id = ?', [id]);
+  }
+
+  public static async createGuidebookSubtopic(data: {
+    topicId: string;
+    title: string;
+    description: string;
+    contentMarkdown: string;
+    coverImageUrl?: string;
+    videoUrl?: string;
+    codeExample?: string;
+    isPublished?: boolean;
+    linkedProblemIds?: string[];
+    orderIndex?: number;
+  }): Promise<GuidebookSubtopic> {
+    const id = `subtopic_${Date.now()}`;
+    await pool.query(
+      `INSERT INTO guidebook_subtopics (id, topic_id, title, description, content_markdown, cover_image_url, video_url, code_example, is_published, linked_problem_ids, order_index)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.topicId,
+        data.title,
+        data.description || '',
+        data.contentMarkdown,
+        data.coverImageUrl || '',
+        data.videoUrl || '',
+        data.codeExample || '',
+        data.isPublished !== undefined ? data.isPublished : true,
+        JSON.stringify(data.linkedProblemIds || []),
+        data.orderIndex || 0
+      ]
+    );
+
+    return {
+      id,
+      topicId: data.topicId,
+      title: data.title,
+      description: data.description,
+      contentMarkdown: data.contentMarkdown,
+      coverImageUrl: data.coverImageUrl,
+      videoUrl: data.videoUrl,
+      codeExample: data.codeExample,
+      isPublished: data.isPublished !== undefined ? data.isPublished : true,
+      linkedProblemIds: data.linkedProblemIds || [],
+      orderIndex: data.orderIndex || 0
+    };
+  }
+
+  public static async updateGuidebookSubtopic(id: string, data: Partial<GuidebookSubtopic>): Promise<void> {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (data.title !== undefined) { fields.push('title = ?'); values.push(data.title); }
+    if (data.description !== undefined) { fields.push('description = ?'); values.push(data.description); }
+    if (data.contentMarkdown !== undefined) { fields.push('content_markdown = ?'); values.push(data.contentMarkdown); }
+    if (data.coverImageUrl !== undefined) { fields.push('cover_image_url = ?'); values.push(data.coverImageUrl); }
+    if (data.videoUrl !== undefined) { fields.push('video_url = ?'); values.push(data.videoUrl); }
+    if (data.codeExample !== undefined) { fields.push('code_example = ?'); values.push(data.codeExample); }
+    if (data.isPublished !== undefined) { fields.push('is_published = ?'); values.push(data.isPublished); }
+    if (data.linkedProblemIds !== undefined) { fields.push('linked_problem_ids = ?'); values.push(JSON.stringify(data.linkedProblemIds)); }
+    if (data.orderIndex !== undefined) { fields.push('order_index = ?'); values.push(data.orderIndex); }
+
+    if (fields.length === 0) return;
+    values.push(id);
+    await pool.query(`UPDATE guidebook_subtopics SET ${fields.join(', ')} WHERE id = ?`, values);
+  }
+
+  public static async deleteGuidebookSubtopic(id: string): Promise<void> {
+    await pool.query('DELETE FROM guidebook_subtopics WHERE id = ?', [id]);
+    await pool.query('DELETE FROM user_guidebook_progress WHERE subtopic_id = ?', [id]);
+  }
+
+  public static async toggleSubtopicReadStatus(userId: string, subtopicId: string): Promise<boolean> {
+    if (!userId || userId === 'user_guest' || userId === 'null') return false;
+
+    const [rows]: any = await pool.query('SELECT is_read FROM user_guidebook_progress WHERE user_id = ? AND subtopic_id = ?', [userId, subtopicId]);
+    if (rows.length > 0) {
+      const newStatus = !rows[0].is_read;
+      await pool.query('UPDATE user_guidebook_progress SET is_read = ? WHERE user_id = ? AND subtopic_id = ?', [newStatus, userId, subtopicId]);
+      return newStatus;
+    } else {
+      await pool.query('INSERT INTO user_guidebook_progress (user_id, subtopic_id, is_read) VALUES (?, ?, TRUE)', [userId, subtopicId]);
+      return true;
+    }
   }
 }
 

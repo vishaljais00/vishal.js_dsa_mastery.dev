@@ -6,10 +6,14 @@ import { InterviewTestComponent } from './pages/interview-test/interview-test.co
 import { AdminComponent } from './pages/admin/admin.component';
 import { MockHistoryComponent } from './pages/mock-history/mock-history.component';
 import { LeaderboardComponent } from './pages/leaderboard/leaderboard.component';
+import { GuidebookComponent } from './pages/guidebook/guidebook.component';
+import { PlaygroundComponent } from './pages/playground/playground.component';
 
 export const routes: Routes = [
   { path: '', component: RoadmapComponent },
   { path: 'problem/:id', component: ProblemViewComponent },
+  { path: 'guidebook', component: GuidebookComponent },
+  { path: 'playground', component: PlaygroundComponent },
   { path: 'cheat-sheet', component: CheatSheetComponent },
   { path: 'interview-test', component: InterviewTestComponent },
   { path: 'mock-history', component: MockHistoryComponent },

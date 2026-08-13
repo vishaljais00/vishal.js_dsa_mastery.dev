@@ -27,6 +27,11 @@
               "src/assets",
               {
                 "glob": "**/*",
+                "input": "src/app/assets",
+                "output": "assets"
+              },
+              {
+                "glob": "**/*",
                 "input": "node_modules/monaco-editor/min/vs",
                 "output": "assets/monaco/vs"
               }
@@ -67,5 +72,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "bed58e5c-9004-4920-b77c-d2b14338201b"
   }
 }

@@ -11,6 +11,7 @@ export interface TestCase {
 
 export interface Problem {
   id: string;
+  category?: 'DSA' | 'JS';
   dayNumber: number;
   weekNumber: number;
   title: string;
@@ -24,6 +25,33 @@ export interface Problem {
   patternTag: string;
   isSolved?: boolean;
   isNew?: boolean;
+}
+
+export interface GuidebookTopic {
+  id: string;
+  category: 'DSA' | 'JS';
+  title: string;
+  description: string;
+  icon: string;
+  orderIndex: number;
+  createdAt?: string;
+  subtopics?: GuidebookSubtopic[];
+}
+
+export interface GuidebookSubtopic {
+  id: string;
+  topicId: string;
+  title: string;
+  description: string;
+  contentMarkdown: string;
+  coverImageUrl?: string;
+  videoUrl?: string;
+  codeExample?: string;
+  isPublished: boolean;
+  linkedProblemIds?: string[];
+  orderIndex: number;
+  isRead?: boolean;
+  createdAt?: string;
 }
 
 export interface DayPlan {
@@ -81,8 +109,9 @@ export class DsaService {
 
   constructor(private http: HttpClient) {}
 
-  fetchCurriculum(userId: string = ''): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/curriculum?userId=${encodeURIComponent(userId)}`).pipe(
+  fetchCurriculum(userId: string = '', category: string = ''): Observable<any> {
+    const url = `${this.apiUrl}/curriculum?userId=${encodeURIComponent(userId)}&category=${encodeURIComponent(category)}`;
+    return this.http.get<any>(url).pipe(
       tap((res: any) => {
         if (res && res.curriculum) {
           this.curriculumSignal.set(res.curriculum);
@@ -200,5 +229,56 @@ export class DsaService {
 
   saveNote(problemId: string, userId: string, note: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/notes/${problemId}`, { userId, note });
+  }
+
+  // --- GUIDEBOOK APIs ---
+  getGuidebookTopics(category?: 'DSA' | 'JS', userId: string = ''): Observable<GuidebookTopic[]> {
+    let url = `${this.apiUrl}/guidebook/topics?userId=${encodeURIComponent(userId)}`;
+    if (category) url += `&category=${encodeURIComponent(category)}`;
+    return this.http.get<GuidebookTopic[]>(url);
+  }
+
+  getGuidebookSubtopic(id: string, userId: string = ''): Observable<GuidebookSubtopic> {
+    return this.http.get<GuidebookSubtopic>(`${this.apiUrl}/guidebook/subtopic/${id}?userId=${encodeURIComponent(userId)}`);
+  }
+
+  toggleSubtopicProgress(userId: string, subtopicId: string): Observable<{ success: boolean; isRead: boolean }> {
+    return this.http.post<{ success: boolean; isRead: boolean }>(`${this.apiUrl}/guidebook/progress/toggle`, { userId, subtopicId });
+  }
+
+  addGuidebookTopic(payload: { adminUserId: string; category: 'DSA' | 'JS'; title: string; description?: string; icon?: string; orderIndex?: number }): Observable<GuidebookTopic> {
+    return this.http.post<GuidebookTopic>(`${this.apiUrl}/admin/guidebook/topic`, payload);
+  }
+
+  updateGuidebookTopic(id: string, payload: { adminUserId: string; category?: 'DSA' | 'JS'; title?: string; description?: string; icon?: string; orderIndex?: number }): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/admin/guidebook/topic/${id}`, payload);
+  }
+
+  deleteGuidebookTopic(id: string, adminUserId: string): Observable<any> {
+    return this.http.request<any>('delete', `${this.apiUrl}/admin/guidebook/topic/${id}`, { body: { adminUserId } });
+  }
+
+  addGuidebookSubtopic(payload: {
+    adminUserId: string;
+    topicId: string;
+    title: string;
+    description?: string;
+    contentMarkdown: string;
+    coverImageUrl?: string;
+    videoUrl?: string;
+    codeExample?: string;
+    isPublished?: boolean;
+    linkedProblemIds?: string[];
+    orderIndex?: number;
+  }): Observable<GuidebookSubtopic> {
+    return this.http.post<GuidebookSubtopic>(`${this.apiUrl}/admin/guidebook/subtopic`, payload);
+  }
+
+  updateGuidebookSubtopic(id: string, payload: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/admin/guidebook/subtopic/${id}`, payload);
+  }
+
+  deleteGuidebookSubtopic(id: string, adminUserId: string): Observable<any> {
+    return this.http.request<any>('delete', `${this.apiUrl}/admin/guidebook/subtopic/${id}`, { body: { adminUserId } });
   }
 }

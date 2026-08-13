@@ -39,6 +39,24 @@ import { Router } from '@angular/router';
           </a>
 
           <a 
+            routerLink="/guidebook" 
+            routerLinkActive="bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold border-indigo-200 dark:border-indigo-800" 
+            class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1.5 no-underline"
+          >
+            <i class="fa-solid fa-book-open text-sky-500"></i>
+            <span>Guidebook</span>
+          </a>
+
+          <a 
+            routerLink="/playground" 
+            routerLinkActive="bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold border-amber-200 dark:border-amber-800" 
+            class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1.5 no-underline"
+          >
+            <i class="fa-solid fa-terminal text-amber-500"></i>
+            <span>Playground</span>
+          </a>
+
+          <a 
             routerLink="/cheat-sheet" 
             routerLinkActive="bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold border-purple-200 dark:border-purple-800" 
             class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1.5 no-underline"

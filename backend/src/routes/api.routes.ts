@@ -128,7 +128,8 @@ router.post('/auth/reset-password', authLimiter, async (req, res) => {
 router.get('/curriculum', async (req, res) => {
   try {
     const userId = (req.query.userId as string) || '';
-    const cacheKey = `curriculum:${userId || 'guest'}`;
+    const category = (req.query.category as string) || '';
+    const cacheKey = `curriculum:${userId || 'guest'}:${category || 'all'}`;
 
     // Check cache
     const cachedData = await CacheService.get(cacheKey);
@@ -137,6 +138,14 @@ router.get('/curriculum', async (req, res) => {
     }
 
     const result = await MysqlStorageService.getCurriculum(userId);
+    // If category specified, filter returned problems
+    if (category && category !== 'ALL') {
+      result.curriculum = result.curriculum.map((day: any) => ({
+        ...day,
+        problems: day.problems.filter((p: any) => (p.category || 'DSA') === category)
+      })).filter((day: any) => day.problems.length > 0);
+    }
+
     await CacheService.set(cacheKey, JSON.stringify(result), 300); // 5 min TTL
     res.json(result);
   } catch (err: any) {
@@ -273,14 +282,15 @@ router.post('/solutions/:id/upvote', async (req, res) => {
 // --- ADMIN PANEL ROUTES ---
 router.post('/admin/problems', async (req, res) => {
   try {
-    const { adminUserId, title, dayNumber, weekNumber, difficulty, patternTag, description, starterCode, testCases, solutionHint } = req.body;
+    const { adminUserId, category, title, dayNumber, weekNumber, difficulty, patternTag, description, starterCode, testCases, solutionHint } = req.body;
     if (!adminUserId) {
       return res.status(403).json({ error: 'Access Denied: Admin authorization required' });
     }
     if (!title || !dayNumber || !weekNumber || !starterCode || !testCases || testCases.length === 0) {
       return res.status(400).json({ error: 'Missing required problem parameters' });
     }
-    const newProb = await MysqlStorageService.addProblemByAdmin({
+    const newProb = await MysqlStorageService.createProblem({
+      category: category || 'DSA',
       title,
       dayNumber: Number(dayNumber),
       weekNumber: Number(weekNumber),
@@ -332,9 +342,9 @@ router.post('/admin/mock-test', async (req, res) => {
 router.put('/admin/problems/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { adminUserId, title, description, difficulty, patternTag, solutionHint, testCases } = req.body;
+    const { adminUserId, category, title, description, difficulty, patternTag, solutionHint, testCases } = req.body;
     if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
-    await MysqlStorageService.updateProblem(id, { title, description, difficulty, patternTag, solutionHint, testCases });
+    await MysqlStorageService.updateProblem(id, { category, title, description, difficulty, patternTag, solutionHint, testCases });
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -348,6 +358,151 @@ router.delete('/admin/problems/:id', async (req, res) => {
     const { adminUserId } = req.body;
     if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
     await MysqlStorageService.deleteProblem(id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// --- PUBLIC GUIDEBOOK ROUTES ---
+router.get('/guidebook/topics', async (req, res) => {
+  try {
+    const category = (req.query.category as any) || undefined;
+    const userId = (req.query.userId as string) || '';
+    const topics = await MysqlStorageService.getGuidebookTopics(category, userId);
+    res.json(topics);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/guidebook/subtopic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req.query.userId as string) || '';
+    const subtopic = await MysqlStorageService.getGuidebookSubtopic(id, userId);
+    if (!subtopic) return res.status(404).json({ error: 'Subtopic not found' });
+    res.json(subtopic);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/guidebook/progress/toggle', async (req, res) => {
+  try {
+    const { userId, subtopicId } = req.body;
+    if (!userId || userId === 'user_guest') {
+      return res.status(401).json({ error: 'Log in to track reading progress' });
+    }
+    const isRead = await MysqlStorageService.toggleSubtopicReadStatus(userId, subtopicId);
+    res.json({ success: true, isRead });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// --- ADMIN GUIDEBOOK CMS ROUTES ---
+router.post('/admin/guidebook/topic', async (req, res) => {
+  try {
+    const { adminUserId, category, title, description, icon, orderIndex } = req.body;
+    if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
+    if (!title) return res.status(400).json({ error: 'Title is required' });
+
+    const topic = await MysqlStorageService.createGuidebookTopic({
+      category: category || 'JS',
+      title,
+      description: description || '',
+      icon: icon || 'book',
+      orderIndex: Number(orderIndex || 0)
+    });
+    res.json(topic);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put('/admin/guidebook/topic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminUserId, category, title, description, icon, orderIndex } = req.body;
+    if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
+
+    await MysqlStorageService.updateGuidebookTopic(id, { category, title, description, icon, orderIndex: orderIndex !== undefined ? Number(orderIndex) : undefined });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/admin/guidebook/topic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminUserId } = req.body;
+    if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
+
+    await MysqlStorageService.deleteGuidebookTopic(id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/admin/guidebook/subtopic', async (req, res) => {
+  try {
+    const { adminUserId, topicId, title, description, contentMarkdown, coverImageUrl, videoUrl, codeExample, isPublished, linkedProblemIds, orderIndex } = req.body;
+    if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
+    if (!topicId || !title || !contentMarkdown) {
+      return res.status(400).json({ error: 'Topic ID, Title, and Content Markdown are required' });
+    }
+
+    const subtopic = await MysqlStorageService.createGuidebookSubtopic({
+      topicId,
+      title,
+      description: description || '',
+      contentMarkdown,
+      coverImageUrl: coverImageUrl || '',
+      videoUrl: videoUrl || '',
+      codeExample: codeExample || '',
+      isPublished: isPublished !== undefined ? isPublished : true,
+      linkedProblemIds: linkedProblemIds || [],
+      orderIndex: Number(orderIndex || 0)
+    });
+    res.json(subtopic);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put('/admin/guidebook/subtopic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminUserId, title, description, contentMarkdown, coverImageUrl, videoUrl, codeExample, isPublished, linkedProblemIds, orderIndex } = req.body;
+    if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
+
+    await MysqlStorageService.updateGuidebookSubtopic(id, {
+      title,
+      description,
+      contentMarkdown,
+      coverImageUrl,
+      videoUrl,
+      codeExample,
+      isPublished,
+      linkedProblemIds,
+      orderIndex: orderIndex !== undefined ? Number(orderIndex) : undefined
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/admin/guidebook/subtopic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminUserId } = req.body;
+    if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
+
+    await MysqlStorageService.deleteGuidebookSubtopic(id);
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
