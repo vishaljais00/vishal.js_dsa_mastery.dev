@@ -19,9 +19,7 @@ import { Router } from '@angular/router';
         
         <!-- Brand Logo -->
         <a routerLink="/" class="flex items-center gap-2.5 shrink-0 no-underline">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-mono font-bold text-white shadow-md shadow-indigo-500/20 text-sm">
-            JS
-          </div>
+          <img src="assets/svg/dsa_logo.svg" class="w-9 h-9 rounded-xl shadow-sm object-contain" alt="JS DSA Logo">
           <div class="hidden sm:block">
             <span class="text-base font-extrabold tracking-tight text-slate-900 dark:text-white block leading-tight">JS DSA Mastery</span>
             <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono font-bold block leading-tight">30-Day Platform</span>

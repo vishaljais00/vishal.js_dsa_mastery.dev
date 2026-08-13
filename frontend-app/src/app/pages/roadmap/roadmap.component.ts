@@ -13,26 +13,24 @@ import { AuthService } from '../../core/services/auth.service';
     <div class="bg-slate-50 dark:bg-slate-950 min-h-screen py-8 transition-colors">
       <div class="max-w-7xl mx-auto px-4">
         
-        <!-- Hero Banner -->
-        <div class="bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-800 rounded-3xl p-8 sm:p-10 text-white shadow-xl shadow-indigo-600/10 mb-8 relative overflow-hidden">
-          <div class="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-          
+        <!-- Hero Banner (Clean Solid Non-Gradient Professional Card) -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 shadow-sm mb-8 relative transition-colors">
           <div class="max-w-3xl relative z-10">
-            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-mono font-bold text-indigo-100 mb-4 border border-white/20">
+            <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-xs font-mono font-bold text-indigo-700 dark:text-indigo-300 mb-4 border border-indigo-200 dark:border-indigo-800">
               <i class="fa-solid fa-graduation-cap"></i> 30-Day JavaScript DSA Masterplan
             </span>
-            <h1 class="text-3xl sm:text-5xl font-black tracking-tight leading-tight mb-4">
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-white mb-4">
               Master Data Structures &amp; Algorithms in JS
             </h1>
-            <p class="text-indigo-100 text-sm sm:text-base leading-relaxed mb-6 font-medium">
+            <p class="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-medium">
               Master arrays, two pointers, sliding window, binary search, linked lists, stacks, recursion, and pattern recognition. Practice with interactive JavaScript code execution and test cases.
             </p>
 
-            <div class="flex flex-wrap items-center gap-4">
-              <a routerLink="/cheat-sheet" class="px-5 py-3 rounded-xl bg-white text-indigo-700 font-bold text-sm hover:bg-slate-100 shadow-md transition-all flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-3">
+              <a routerLink="/cheat-sheet" class="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-xs transition-all flex items-center gap-2 no-underline">
                 <i class="fa-solid fa-book-open"></i> Pattern Cheat Sheet
               </a>
-              <a routerLink="/interview-test" class="px-5 py-3 rounded-xl bg-amber-400 text-slate-900 font-bold text-sm hover:bg-amber-300 shadow-md transition-all flex items-center gap-2">
+              <a routerLink="/interview-test" class="px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold text-sm shadow-xs transition-all flex items-center gap-2 no-underline">
                 <i class="fa-solid fa-trophy"></i> Day 30 Mock Interview
               </a>
             </div>

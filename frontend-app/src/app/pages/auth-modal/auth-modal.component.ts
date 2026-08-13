@@ -18,9 +18,7 @@ import { DsaService } from '../../core/services/dsa.service';
         </button>
 
         <div class="text-center mb-6">
-          <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-mono font-bold text-xl flex items-center justify-center mx-auto mb-3 shadow-md shadow-indigo-500/20">
-            JS
-          </div>
+          <img src="assets/svg/dsa_logo.svg" class="w-12 h-12 rounded-2xl mx-auto mb-3 shadow-md object-contain" alt="JS DSA Logo">
           <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white m-0">
             {{ mode === 'forgot' ? 'Reset Password' : (mode === 'register' ? 'Create Your Account' : 'Sign In to JS DSA') }}
           </h2>
