@@ -53,6 +53,7 @@ export class MysqlStorageService {
         id VARCHAR(64) PRIMARY KEY,
         username VARCHAR(64) NOT NULL UNIQUE,
         name VARCHAR(128) NOT NULL,
+        email VARCHAR(128),
         password_hash VARCHAR(255) NOT NULL,
         role VARCHAR(16) DEFAULT 'user',
         avatar_url TEXT,
@@ -61,6 +62,13 @@ export class MysqlStorageService {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    try {
+      await pool.query('ALTER TABLE users ADD COLUMN email VARCHAR(128)');
+    } catch {
+      // Column already exists
+    }
+
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS password_resets (
@@ -189,9 +197,14 @@ export class MysqlStorageService {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+    // Account Linking: Check if user exists by google_id OR registered email / username
     const [existing]: any = await pool.query(
-      'SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?)',
-      [data.id, data.username, data.email]
+      `SELECT * FROM users 
+       WHERE id = ? 
+          OR (email IS NOT NULL AND LOWER(email) = LOWER(?))
+          OR LOWER(name) = LOWER(?)
+          OR LOWER(username) = LOWER(?)`,
+      [data.id, data.email, data.email, data.username]
     );
 
     if (existing.length > 0) {
@@ -209,36 +222,41 @@ export class MysqlStorageService {
         }
       }
 
+      const userEmail = data.email || user.email || (user.name && user.name.includes('@') ? user.name : '');
+
       await pool.query(
-        'UPDATE users SET last_login_date = ?, login_streak = ?, avatar_url = ? WHERE id = ?',
-        [todayStr, newStreak, data.avatarUrl || user.avatar_url, user.id]
+        'UPDATE users SET last_login_date = ?, login_streak = ?, avatar_url = ?, email = ? WHERE id = ?',
+        [todayStr, newStreak, data.avatarUrl || user.avatar_url, userEmail, user.id]
       );
 
       return {
         id: user.id,
         username: user.username,
         name: user.name,
+        email: userEmail,
         role: user.role || 'user',
         avatarUrl: data.avatarUrl || user.avatar_url,
         lastLoginDate: todayStr,
         loginStreak: newStreak
       };
     } else {
+      // New Google User
       const dummyPasswordHash = await bcrypt.hash(`google_${Date.now()}_${Math.random()}`, 10);
       await pool.query(
-        `INSERT INTO users (id, username, name, password_hash, role, avatar_url, last_login_date, login_streak)
-         VALUES (?, ?, ?, ?, 'user', ?, ?, 1)`,
-        [data.id, data.username, data.name || data.email, dummyPasswordHash, data.avatarUrl, todayStr]
+        `INSERT INTO users (id, username, name, email, password_hash, role, avatar_url, last_login_date, login_streak)
+         VALUES (?, ?, ?, ?, ?, 'user', ?, ?, 1)`,
+        [data.id, data.username, data.name || data.email, data.email, dummyPasswordHash, data.avatarUrl, todayStr]
       );
 
       if (data.email && data.email.includes('@')) {
-        EmailService.sendWelcomeEmail(data.email, data.username);
+        await EmailService.sendWelcomeEmail(data.email, data.username);
       }
 
       return {
         id: data.id,
         username: data.username,
         name: data.name || data.email,
+        email: data.email,
         role: 'user',
         avatarUrl: data.avatarUrl,
         lastLoginDate: todayStr,
@@ -247,10 +265,14 @@ export class MysqlStorageService {
     }
   }
 
+
   public static async registerUser(username: string, email: string, password: string): Promise<User> {
-    const [existing]: any = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [username]);
+    const [existing]: any = await pool.query(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?) OR (email IS NOT NULL AND LOWER(email) = LOWER(?))',
+      [username, email, email]
+    );
     if (existing.length > 0) {
-      throw new Error('Username is already taken');
+      throw new Error('Username or email address is already registered');
     }
 
     const id = `user_${Date.now()}`;
@@ -261,22 +283,26 @@ export class MysqlStorageService {
     const passwordHash = await bcrypt.hash(password, 10);
 
     await pool.query(
-      `INSERT INTO users (id, username, name, password_hash, role, avatar_url, last_login_date, login_streak)
-       VALUES (?, ?, ?, ?, 'user', ?, ?, 1)`,
-      [id, username, email, passwordHash, avatarUrl, today]
+      `INSERT INTO users (id, username, name, email, password_hash, role, avatar_url, last_login_date, login_streak)
+       VALUES (?, ?, ?, ?, ?, 'user', ?, ?, 1)`,
+      [id, username, email, email, passwordHash, avatarUrl, today]
     );
 
     // Send Welcome Email directly to user's registered email
-    EmailService.sendWelcomeEmail(email, username);
+    await EmailService.sendWelcomeEmail(email, username);
 
-    return { id, username, name: email, role: 'user', avatarUrl, lastLoginDate: today, loginStreak: 1 };
+    return { id, username, name: email, email, role: 'user', avatarUrl, lastLoginDate: today, loginStreak: 1 };
   }
 
   public static async loginUser(usernameOrEmail: string, password: string): Promise<User> {
-    const [rows]: any = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?)', [usernameOrEmail, usernameOrEmail]);
+    const [rows]: any = await pool.query(
+      'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?) OR (email IS NOT NULL AND LOWER(email) = LOWER(?))',
+      [usernameOrEmail, usernameOrEmail, usernameOrEmail]
+    );
     if (rows.length === 0) {
       throw new Error('Invalid username/email or password');
     }
+
 
     const user = rows[0];
 
@@ -363,15 +389,15 @@ export class MysqlStorageService {
   // --- FORGOT PASSWORD OTP METHODS ---
   public static async createPasswordResetOTP(emailOrUsername: string): Promise<void> {
     const [rows]: any = await pool.query(
-      'SELECT username, name as email FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?)',
-      [emailOrUsername, emailOrUsername]
+      'SELECT username, name, email FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(name) = LOWER(?) OR (email IS NOT NULL AND LOWER(email) = LOWER(?))',
+      [emailOrUsername, emailOrUsername, emailOrUsername]
     );
     if (rows.length === 0) {
       throw new Error('No account registered with that username or email address');
     }
 
     const user = rows[0];
-    const targetEmail = user.email && user.email.includes('@') ? user.email : `${user.username}@user.jsdsamastery.dev`;
+    const targetEmail = (user.email && user.email.includes('@')) ? user.email : (user.name && user.name.includes('@') ? user.name : `${user.username}@user.jsdsamastery.dev`);
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
 
@@ -388,6 +414,7 @@ export class MysqlStorageService {
       otpCode
     );
   }
+
 
   public static async resetPasswordWithOTP(emailOrUsername: string, otpCode: string, newPass: string): Promise<void> {
     const [rows]: any = await pool.query(
