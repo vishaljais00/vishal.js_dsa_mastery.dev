@@ -282,9 +282,59 @@ console.log('Indices for Target 9:', result);`;
     navigator.clipboard.writeText(this.code);
   }
 
+  private sanitizeCode(code: string): string | null {
+    const forbiddenPatterns = [
+      /\bprocess\b/i,
+      /\bglobal\b/i,
+      /\bglobalThis\b/i,
+      /\bself\b/i,
+      /\bimportScripts\b/i,
+      /\bpostMessage\b/i,
+      /\bonmessage\b/i,
+      /\bclose\s*\(/i,
+      /\brequire\s*\(/i,
+      /\bimport\s*\(/i,
+      /\bimport\s+/i,
+      /\bchild_process\b/i,
+      /\bfs\b/i,
+      /\bmodule\b/i,
+      /\bmainModule\b/i,
+      /\b__dirname\b/i,
+      /\b__filename\b/i,
+      /\bconstructor\s*\.\s*constructor\b/i,
+      /\bFunction\s*\(/i,
+      /\beval\s*\(/i,
+      /\bReflect\b/i,
+      /\bProxy\b/i,
+      /\b__proto__\b/i
+    ];
+
+    for (const pattern of forbiddenPatterns) {
+      if (pattern.test(code)) {
+        return `Security Violation: Forbidden keyword or escape pattern detected (${pattern.source})`;
+      }
+    }
+    return null;
+  }
+
   runCode() {
     if (this.isRunning) return;
     this.clearConsole();
+
+    // Security check: pre-sanitize playground code before execution
+    const securityViolation = this.sanitizeCode(this.code);
+    if (securityViolation) {
+      const nowStr = new Date().toLocaleTimeString();
+      this.logs.push({
+        type: 'error',
+        message: `[SECURITY_ALERT] ${securityViolation}`,
+        timestamp: nowStr
+      });
+      this.executionError = securityViolation;
+      this.status = 'ERROR';
+      return;
+    }
+
     this.isRunning = true;
     this.status = 'RUNNING';
 
@@ -313,7 +363,7 @@ console.log('Indices for Target 9:', result);`;
         };
 
         try {
-          const runFn = new Function('console', code);
+          const runFn = new Function('console', '"use strict";\\n' + code);
           runFn(customConsole);
           self.postMessage({ type: 'DONE' });
         } catch(err) {
