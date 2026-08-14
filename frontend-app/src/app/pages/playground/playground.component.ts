@@ -355,11 +355,37 @@ console.log('Indices for Target 9:', result);`;
         const location = undefined;
 
         // Custom Console interceptor
+        let logCount = 0;
+        const MAX_LOGS = 500;
         const customConsole = {
-          log: (...args) => self.postMessage({ type: 'log', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') }),
-          warn: (...args) => self.postMessage({ type: 'warn', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') }),
-          error: (...args) => self.postMessage({ type: 'error', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') }),
-          info: (...args) => self.postMessage({ type: 'info', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') })
+          log: (...args) => {
+            logCount++;
+            if (logCount > MAX_LOGS) {
+              throw new Error('Console log limit exceeded. Possible infinite loop.');
+            }
+            self.postMessage({ type: 'log', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+          },
+          warn: (...args) => {
+            logCount++;
+            if (logCount > MAX_LOGS) {
+              throw new Error('Console log limit exceeded. Possible infinite loop.');
+            }
+            self.postMessage({ type: 'warn', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+          },
+          error: (...args) => {
+            logCount++;
+            if (logCount > MAX_LOGS) {
+              throw new Error('Console log limit exceeded. Possible infinite loop.');
+            }
+            self.postMessage({ type: 'error', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+          },
+          info: (...args) => {
+            logCount++;
+            if (logCount > MAX_LOGS) {
+              throw new Error('Console log limit exceeded. Possible infinite loop.');
+            }
+            self.postMessage({ type: 'info', message: args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ') });
+          }
         };
 
         try {
