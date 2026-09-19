@@ -75,6 +75,15 @@ import { Router } from '@angular/router';
             <span>Mock Test</span>
           </a>
 
+          <a
+            routerLink="/resume-analyzer"
+            routerLinkActive="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold border-emerald-200 dark:border-emerald-800"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1.5 no-underline"
+          >
+            <i class="fa-solid fa-file-circle-check text-emerald-500"></i>
+            <span class="hidden xl:inline">ATS Analyzer</span>
+          </a>
+
           <a 
             routerLink="/leaderboard" 
             routerLinkActive="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold border-emerald-200 dark:border-emerald-800" 

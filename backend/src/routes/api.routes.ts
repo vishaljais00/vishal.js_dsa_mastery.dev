@@ -1,13 +1,19 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 import { OAuth2Client } from 'google-auth-library';
 import { ExecutionService } from '../services/execution.service';
 import { MysqlStorageService } from '../services/mysql-storage.service';
 import { CacheService } from '../services/cache.service';
+import { ResumeService } from '../services/resume.service';
 
 const googleOAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || '305407856293-5gdm6e769q8jdphd1tmq6c18gmfa9cio.apps.googleusercontent.com');
 
 const router = Router();
+const resumeUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 // --- RATE LIMITERS ---
 const globalLimiter = rateLimit({
@@ -235,6 +241,60 @@ router.get('/mock-test/history/:userId', async (req, res) => {
     res.json(history);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- RESUME ATS ANALYSIS ROUTES ---
+router.post('/resume/analyze', resumeUpload.single('file'), async (req, res) => {
+  try {
+    const { userId, jobDescription, jobTitle } = req.body;
+    if (!userId || userId === 'user_guest') {
+      return res.status(401).json({ error: 'Log in to analyze a resume' });
+    }
+    if (!jobDescription || jobDescription.trim().length < 30) {
+      return res.status(400).json({ error: 'A job description of at least 30 characters is required' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'A PDF, DOCX, or TXT resume is required' });
+    }
+
+    const resumeText = await ResumeService.extractText(req.file);
+    const result = ResumeService.analyze(resumeText, jobDescription);
+    const analysis = await MysqlStorageService.saveResumeAnalysis({
+      userId,
+      filename: req.file.originalname,
+      fileType: req.file.mimetype,
+      fileSize: req.file.size,
+      jobTitle,
+      jobDescription: jobDescription.trim(),
+      resumeText,
+      result
+    });
+    res.json(analysis);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Resume analysis failed' });
+  }
+});
+
+router.get('/resume/analyses/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId || userId === 'user_guest') return res.status(401).json({ error: 'Login required' });
+    res.json(await MysqlStorageService.getResumeAnalyses(userId));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/resume/analysis/:id', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId || userId === 'user_guest') return res.status(401).json({ error: 'Login required' });
+    const deleted = await MysqlStorageService.deleteResumeAnalysis(userId, req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Analysis not found' });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
   }
 });
 

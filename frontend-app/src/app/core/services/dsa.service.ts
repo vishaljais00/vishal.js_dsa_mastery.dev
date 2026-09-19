@@ -98,6 +98,23 @@ export interface CommunitySolution {
   createdAt: string;
 }
 
+export interface ResumeAnalysis {
+  id: string;
+  filename: string;
+  fileType: string;
+  fileSize: number;
+  jobTitle?: string;
+  score: number;
+  keywordScore: number;
+  sectionScore: number;
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  sections: Record<string, boolean>;
+  warnings: string[];
+  recommendations: string[];
+  createdAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -149,6 +166,25 @@ export class DsaService {
 
   updatePassword(userId: string, oldPassword: string, newPassword: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/auth/update-password`, { userId, oldPassword, newPassword });
+  }
+
+  analyzeResume(file: File, userId: string, jobDescription: string, jobTitle = ''): Observable<ResumeAnalysis> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', userId);
+    formData.append('jobDescription', jobDescription);
+    formData.append('jobTitle', jobTitle);
+    return this.http.post<ResumeAnalysis>(`${this.apiUrl}/resume/analyze`, formData);
+  }
+
+  getResumeAnalyses(userId: string): Observable<ResumeAnalysis[]> {
+    return this.http.get<ResumeAnalysis[]>(`${this.apiUrl}/resume/analyses/${encodeURIComponent(userId)}`);
+  }
+
+  deleteResumeAnalysis(id: string, userId: string): Observable<{ success: boolean }> {
+    return this.http.request<{ success: boolean }>('delete', `${this.apiUrl}/resume/analysis/${encodeURIComponent(id)}`, {
+      body: { userId }
+    });
   }
 
   // --- MOCK TEST APIs ---

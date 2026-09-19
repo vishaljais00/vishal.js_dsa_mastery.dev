@@ -320,6 +320,24 @@ export class MysqlStorageService {
     }
 
     try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS resume_analyses (
+          id VARCHAR(64) PRIMARY KEY,
+          user_id VARCHAR(64) NOT NULL,
+          filename VARCHAR(255) NOT NULL,
+          file_type VARCHAR(16) NOT NULL,
+          file_size INT NOT NULL,
+          job_title VARCHAR(255),
+          job_description TEXT NOT NULL,
+          resume_text LONGTEXT NOT NULL,
+          result_json JSON NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_resume_analyses_user (user_id)
+        )
+      `);
+    } catch (e: any) { console.warn('resume_analyses table check:', e?.message); }
+
+    try {
       await pool.query('SET FOREIGN_KEY_CHECKS = 1');
     } catch (e) {}
 
@@ -853,6 +871,49 @@ export class MysqlStorageService {
       answersJson: typeof r.answers_json === 'string' ? JSON.parse(r.answers_json) : r.answers_json,
       createdAt: r.created_at
     }));
+  }
+
+  // --- RESUME ANALYSIS METHODS ---
+  public static async saveResumeAnalysis(data: {
+    userId: string;
+    filename: string;
+    fileType: string;
+    fileSize: number;
+    jobTitle?: string;
+    jobDescription: string;
+    resumeText: string;
+    result: any;
+  }): Promise<any> {
+    const id = `resume_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await pool.query(
+      `INSERT INTO resume_analyses
+       (id, user_id, filename, file_type, file_size, job_title, job_description, resume_text, result_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, data.userId, data.filename, data.fileType, data.fileSize, data.jobTitle || '', data.jobDescription, data.resumeText, JSON.stringify(data.result)]
+    );
+    return { id, filename: data.filename, fileType: data.fileType, jobTitle: data.jobTitle || '', ...data.result, createdAt: new Date().toISOString() };
+  }
+
+  public static async getResumeAnalyses(userId: string): Promise<any[]> {
+    const [rows]: any = await pool.query(
+      `SELECT id, filename, file_type, file_size, job_title, result_json, created_at
+       FROM resume_analyses WHERE user_id = ? ORDER BY created_at DESC`,
+      [userId]
+    );
+    return rows.map((row: any) => ({
+      id: row.id,
+      filename: row.filename,
+      fileType: row.file_type,
+      fileSize: row.file_size,
+      jobTitle: row.job_title,
+      ...(typeof row.result_json === 'string' ? JSON.parse(row.result_json) : row.result_json),
+      createdAt: row.created_at
+    }));
+  }
+
+  public static async deleteResumeAnalysis(userId: string, id: string): Promise<boolean> {
+    const [result]: any = await pool.query('DELETE FROM resume_analyses WHERE id = ? AND user_id = ?', [id, userId]);
+    return result.affectedRows > 0;
   }
 
   // --- COMMUNITY SOLUTIONS & UPVOTES ---

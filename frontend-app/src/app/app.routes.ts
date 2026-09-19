@@ -8,12 +8,14 @@ import { MockHistoryComponent } from './pages/mock-history/mock-history.componen
 import { LeaderboardComponent } from './pages/leaderboard/leaderboard.component';
 import { GuidebookComponent } from './pages/guidebook/guidebook.component';
 import { PlaygroundComponent } from './pages/playground/playground.component';
+import { ResumeAnalyzerComponent } from './pages/resume-analyzer/resume-analyzer.component';
 
 export const routes: Routes = [
   { path: '', component: RoadmapComponent },
   { path: 'problem/:id', component: ProblemViewComponent },
   { path: 'guidebook', component: GuidebookComponent },
   { path: 'playground', component: PlaygroundComponent },
+  { path: 'resume-analyzer', component: ResumeAnalyzerComponent },
   { path: 'cheat-sheet', component: CheatSheetComponent },
   { path: 'interview-test', component: InterviewTestComponent },
   { path: 'mock-history', component: MockHistoryComponent },
