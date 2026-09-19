@@ -92,6 +92,7 @@ export interface CommunitySolution {
   code: string;
   runtimeMs: number;
   patternTag: string;
+  category?: string;
   upvotes: number;
   upvotedBy?: string[];
   createdAt: string;
@@ -153,6 +154,7 @@ export class DsaService {
   // --- MOCK TEST APIs ---
   submitMockTest(payload: {
     userId: string;
+    category?: string;
     score: number;
     totalQuestions: number;
     timeSpentSeconds: number;
@@ -161,22 +163,22 @@ export class DsaService {
     return this.http.post<any>(`${this.apiUrl}/mock-test/submit`, payload);
   }
 
-  getMockTestHistory(userId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/mock-test/history/${encodeURIComponent(userId)}`);
+  getMockTestHistory(userId: string, category: string = 'ALL'): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/mock-test/history/${encodeURIComponent(userId)}?category=${encodeURIComponent(category)}`);
   }
 
-  // Returns { questions: [{id, minutes}] } from backend
-  getMockTestConfig(): Observable<{ questions: { id: string; minutes: number }[] }> {
-    return this.http.get<{ questions: { id: string; minutes: number }[] }>(`${this.apiUrl}/admin/mock-test`);
+  // Returns { category, questions: [{id, minutes}] } from backend
+  getMockTestConfig(category: string = 'DSA'): Observable<{ category?: string; questions: { id: string; minutes: number }[] }> {
+    return this.http.get<{ category?: string; questions: { id: string; minutes: number }[] }>(`${this.apiUrl}/admin/mock-test?category=${encodeURIComponent(category)}`);
   }
 
   // Saves per-question config to backend
-  updateMockTestConfig(questions: { id: string; minutes: number }[]): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/admin/mock-test`, { questions });
+  updateMockTestConfig(questions: { id: string; minutes: number }[], category: string = 'DSA'): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/admin/mock-test`, { questions, category });
   }
 
   getCommunitySolutions(problemId: string): Observable<CommunitySolution[]> {
-    return this.http.get<CommunitySolution[]>(`${this.apiUrl}/solutions/${problemId}`);
+    return this.http.get<CommunitySolution[]>(`${this.apiUrl}/solutions/${problemId}?t=${Date.now()}`);
   }
 
   shareSolution(payload: {
@@ -187,6 +189,7 @@ export class DsaService {
     code: string;
     runtimeMs: number;
     patternTag: string;
+    category?: string;
   }): Observable<CommunitySolution> {
     return this.http.post<CommunitySolution>(`${this.apiUrl}/solutions`, payload);
   }
@@ -214,13 +217,13 @@ export class DsaService {
     return this.http.get<any[]>(`${this.apiUrl}/admin/users-activity`);
   }
 
-  updateMockTest(problemIds: string[], timeLimitMinutes: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/admin/mock-test`, { problemIds, timeLimitMinutes });
+  updateMockTest(problemIds: string[], timeLimitMinutes: number, category: string = 'DSA'): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/admin/mock-test`, { problemIds, timeLimitMinutes, category });
   }
 
   // --- LEADERBOARD & NOTES APIs ---
-  getLeaderboard(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/leaderboard`);
+  getLeaderboard(category: string = 'DSA'): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/leaderboard?category=${encodeURIComponent(category)}&t=${Date.now()}`);
   }
 
   getNote(problemId: string, userId: string): Observable<{ note: string }> {

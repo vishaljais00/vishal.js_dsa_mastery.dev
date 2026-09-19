@@ -4,6 +4,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { DsaService } from './core/services/dsa.service';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
+import { MonacoLoaderService } from './core/services/monaco-loader.service';
 import { AuthModalComponent } from './pages/auth-modal/auth-modal.component';
 import { ProfileModalComponent } from './pages/profile-modal/profile-modal.component';
 import { ToastComponent } from './shared/toast/toast.component';
@@ -225,7 +226,8 @@ export class AppComponent implements OnInit {
     public dsaService: DsaService,
     public authService: AuthService,
     public themeService: ThemeService,
-    private router: Router
+    private router: Router,
+    private monacoLoader: MonacoLoaderService
   ) {}
 
   ngOnInit() {

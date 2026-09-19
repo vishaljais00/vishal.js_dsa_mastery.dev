@@ -25,36 +25,72 @@ export interface ExamQuestionState {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, MonacoEditorComponent],
   template: `
-    <div class="bg-slate-950 min-h-screen text-slate-100 py-6 transition-colors">
+    <div class="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-900 dark:text-slate-100 py-6 transition-colors">
       <div class="max-w-7xl mx-auto px-4">
         
         <!-- PHASE 1: PRE-TEST LAUNCHER (QUESTIONS HIDDEN BEFORE START) -->
         <div *ngIf="examState === 'launcher'" class="max-w-3xl mx-auto py-10">
-          <div class="bg-slate-900 rounded-3xl p-8 sm:p-12 border border-slate-800 shadow-2xl relative overflow-hidden text-center">
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-12 border border-slate-200 dark:border-slate-800 shadow-xl relative overflow-hidden text-center transition-colors">
             
-            <div class="w-20 h-20 rounded-2xl bg-amber-500/10 text-amber-400 text-3xl flex items-center justify-center mx-auto mb-6 border border-amber-500/20 shadow-inner">
+            <div class="w-20 h-20 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-amber-400 text-3xl flex items-center justify-center mx-auto mb-6 border border-amber-500/20 shadow-inner">
               <i class="fa-solid fa-trophy"></i>
             </div>
 
-            <span class="inline-block px-3 py-1 rounded-full bg-amber-400/10 text-amber-400 text-xs font-mono font-bold uppercase tracking-wider mb-3 border border-amber-400/20">
+            <span class="inline-block px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-mono font-bold uppercase tracking-wider mb-3 border border-amber-500/20">
               Day 30 Final Evaluation
             </span>
 
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mb-4">
               Real Technical Interview Simulation
             </h1>
 
-            <p class="text-slate-400 text-sm leading-relaxed mb-8 max-w-xl mx-auto">
-              Simulate a real coding interview with <strong>5 random DSA problems</strong>. Each question has its own individual countdown timer. Solve all questions in a single workspace.
+            <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6 max-w-xl mx-auto">
+              Simulate a real coding interview with <strong>5 random track problems</strong>. Each question has its own individual countdown timer.
             </p>
 
+            <!-- TRACK SELECTION TOGGLE -->
+            <div class="flex items-center justify-center gap-3 mb-8">
+              <button
+                type="button"
+                (click)="selectTrack('DSA')"
+                [class.bg-indigo-600]="selectedTrack === 'DSA'"
+                [class.text-white]="selectedTrack === 'DSA'"
+                [class.border-indigo-500]="selectedTrack === 'DSA'"
+                [class.bg-slate-100]="selectedTrack !== 'DSA'"
+                [class.dark:bg-slate-900]="selectedTrack !== 'DSA'"
+                [class.text-slate-600]="selectedTrack !== 'DSA'"
+                [class.dark:text-slate-400]="selectedTrack !== 'DSA'"
+                [class.border-slate-200]="selectedTrack !== 'DSA'"
+                [class.dark:border-slate-800]="selectedTrack !== 'DSA'"
+                class="px-5 py-2.5 rounded-2xl text-xs font-mono font-bold border transition-all flex items-center gap-2"
+              >
+                <i class="fa-solid fa-square-code"></i> DSA Track Exam
+              </button>
+              <button
+                type="button"
+                (click)="selectTrack('JS')"
+                [class.bg-indigo-600]="selectedTrack === 'JS'"
+                [class.text-white]="selectedTrack === 'JS'"
+                [class.border-indigo-500]="selectedTrack === 'JS'"
+                [class.bg-slate-100]="selectedTrack !== 'JS'"
+                [class.dark:bg-slate-900]="selectedTrack !== 'JS'"
+                [class.text-slate-600]="selectedTrack !== 'JS'"
+                [class.dark:text-slate-400]="selectedTrack !== 'JS'"
+                [class.border-slate-200]="selectedTrack !== 'JS'"
+                [class.dark:border-slate-800]="selectedTrack !== 'JS'"
+                class="px-5 py-2.5 rounded-2xl text-xs font-mono font-bold border transition-all flex items-center gap-2"
+              >
+                <i class="fa-brands fa-js"></i> JS Track Exam
+              </button>
+            </div>
+
             <!-- IMPORTANT WARNING BANNER -->
-            <div class="bg-amber-950/40 border border-amber-800/80 rounded-2xl p-4 text-left mb-8 max-w-xl mx-auto">
+            <div class="bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 dark:border-amber-800/80 rounded-2xl p-4 text-left mb-8 max-w-xl mx-auto">
               <div class="flex gap-3">
-                <i class="fa-solid fa-triangle-exclamation text-amber-400 text-lg mt-0.5"></i>
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 dark:text-amber-400 text-lg mt-0.5"></i>
                 <div>
-                  <h4 class="text-xs font-mono font-bold text-amber-300 uppercase tracking-wide m-0">Important Exam Rule</h4>
-                  <p class="text-xs text-amber-200/80 m-0 mt-1">
+                  <h4 class="text-xs font-mono font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide m-0">Important Exam Rule</h4>
+                  <p class="text-xs text-amber-900/90 dark:text-amber-200/80 m-0 mt-1">
                     Do <strong>NOT</strong> reload or leave this page during the exam. Reloading will reset your progress. Once a question's individual timer expires, that question locks automatically.
                   </p>
                 </div>
@@ -62,22 +98,22 @@ export interface ExamQuestionState {
             </div>
 
             <!-- RANDOM QUESTIONS SHUFFLE PREVIEW -->
-            <div class="bg-slate-950/80 rounded-2xl p-4 border border-slate-800/80 max-w-xl mx-auto mb-8">
+            <div class="bg-slate-50 dark:bg-slate-950/80 rounded-2xl p-4 border border-slate-200 dark:border-slate-800/80 max-w-xl mx-auto mb-8">
               <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-mono font-bold text-slate-400 uppercase tracking-wide">
-                  🎲 Selected Exam Set (5 Questions)
+                <span class="text-xs font-mono font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                  🎲 Selected {{selectedTrack}} Exam Set (5 Questions)
                 </span>
-                <button (click)="shuffleQuestions()" class="text-xs text-indigo-400 hover:text-indigo-300 font-bold font-mono transition-all flex items-center gap-1">
+                <button (click)="shuffleQuestions()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 font-bold font-mono transition-all flex items-center gap-1">
                   <i class="fa-solid fa-shuffle"></i> Shuffle Questions
                 </button>
               </div>
 
               <div class="space-y-2 text-left">
-                <div *ngFor="let q of examQuestions; let i = index" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span class="text-xs font-bold text-slate-200">Q{{i+1}}: {{q.problem.title}}</span>
+                <div *ngFor="let q of examQuestions; let i = index" class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">Q{{i+1}}: {{q.problem.title}}</span>
                 <div class="flex items-center gap-2">
                   <span [class]="getDifficultyClass(q.problem.difficulty)">{{q.problem.difficulty}}</span>
-                  <span class="text-[10px] font-mono text-amber-400 bg-slate-800 px-2 py-0.5 rounded font-bold">
+                  <span class="text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-slate-800 px-2 py-0.5 rounded font-bold border border-amber-200 dark:border-slate-700">
                     {{formatTime(q.initialTimeSeconds)}}
                   </span>
                 </div>
@@ -86,14 +122,14 @@ export interface ExamQuestionState {
 
             <!-- Total Exam Time row -->
             <div class="mt-2 flex items-center justify-between px-1">
-              <span class="text-[11px] font-mono text-slate-500">Total Exam Duration:</span>
-              <span class="text-xs font-mono font-extrabold text-indigo-400">{{totalExamMinutes}} minutes</span>
+              <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">Total Exam Duration:</span>
+              <span class="text-xs font-mono font-extrabold text-indigo-600 dark:text-indigo-400">{{totalExamMinutes}} minutes</span>
             </div>
           </div>
 
             <!-- LAUNCH BUTTON -->
             <button (click)="startExam()" class="btn-primary py-4 px-10 text-base font-bold rounded-2xl shadow-xl shadow-indigo-600/20 hover:scale-105 transition-all">
-              <i class="fa-solid fa-play mr-2"></i> Start Mock Exam Now
+              <i class="fa-solid fa-play mr-2"></i> Start {{selectedTrack}} Mock Exam Now
             </button>
           </div>
         </div>
@@ -102,7 +138,7 @@ export interface ExamQuestionState {
         <div *ngIf="examState === 'active'" class="space-y-4">
           
           <!-- TOP WORKSPACE BAR -->
-          <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm transition-colors">
             
             <!-- Question Selector Tabs -->
             <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
@@ -111,13 +147,15 @@ export interface ExamQuestionState {
                 (click)="selectQuestion(i)"
                 [class.bg-indigo-600]="activeQuestionIndex === i"
                 [class.text-white]="activeQuestionIndex === i"
-                [class.bg-slate-800]="activeQuestionIndex !== i"
-                [class.text-slate-300]="activeQuestionIndex !== i"
-                class="px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-2 shrink-0 border border-slate-700/60"
+                [class.bg-slate-100]="activeQuestionIndex !== i"
+                [class.dark:bg-slate-800]="activeQuestionIndex !== i"
+                [class.text-slate-700]="activeQuestionIndex !== i"
+                [class.dark:text-slate-300]="activeQuestionIndex !== i"
+                class="px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-2 shrink-0 border border-slate-200 dark:border-slate-700/60"
               >
                 <span>Q{{i+1}}</span>
-                <i *ngIf="q.isLocked" class="fa-solid fa-lock text-rose-400 text-[10px]"></i>
-                <i *ngIf="!q.isLocked && q.isSaved" class="fa-solid fa-circle-check text-emerald-400 text-[10px]"></i>
+                <i *ngIf="q.isLocked" class="fa-solid fa-lock text-rose-500 dark:text-rose-400 text-[10px]"></i>
+                <i *ngIf="!q.isLocked && q.isSaved" class="fa-solid fa-circle-check text-emerald-500 dark:text-emerald-400 text-[10px]"></i>
               </button>
             </div>
 
@@ -125,13 +163,15 @@ export interface ExamQuestionState {
             <div class="flex items-center gap-4 shrink-0 justify-between">
               
               <!-- Current Question Countdown -->
-              <div class="bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 flex items-center gap-3">
-                <i class="fa-solid fa-stopwatch text-amber-400 text-sm"></i>
+              <div class="bg-slate-50 dark:bg-slate-950 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                <i class="fa-solid fa-stopwatch text-amber-500 dark:text-amber-400 text-sm"></i>
                 <div>
-                  <span class="text-[10px] font-mono uppercase text-slate-400 block font-bold">Q{{activeQuestionIndex + 1}} Timer</span>
+                  <span class="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block font-bold">Q{{activeQuestionIndex + 1}} Timer</span>
                   <span 
-                    [class.text-rose-400]="currentQ.timeLeftSeconds <= 120"
-                    [class.text-amber-400]="currentQ.timeLeftSeconds > 120"
+                    [class.text-rose-600]="currentQ.timeLeftSeconds <= 120"
+                    [class.dark:text-rose-400]="currentQ.timeLeftSeconds <= 120"
+                    [class.text-amber-600]="currentQ.timeLeftSeconds > 120"
+                    [class.dark:text-amber-400]="currentQ.timeLeftSeconds > 120"
                     class="text-base font-extrabold font-mono"
                   >
                     {{formatTime(currentQ.timeLeftSeconds)}}
@@ -150,11 +190,11 @@ export interface ExamQuestionState {
 
                 <!-- Step 2: confirm bar replaces button -->
                 <ng-container *ngIf="confirmingSubmit">
-                  <span class="text-xs font-mono text-amber-300 font-bold">Submit all answers?</span>
+                  <span class="text-xs font-mono text-amber-600 dark:text-amber-300 font-bold">Submit all answers?</span>
                   <button (click)="finishExam()" class="btn-primary py-2 px-4 text-xs bg-rose-600 hover:bg-rose-500 shadow-md">
                     <i class="fa-solid fa-check mr-1"></i> Yes, Submit
                   </button>
-                  <button (click)="cancelSubmit()" class="py-2 px-4 text-xs font-bold rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition-all">
+                  <button (click)="cancelSubmit()" class="py-2 px-4 text-xs font-bold rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 transition-all">
                     Cancel
                   </button>
                 </ng-container>
@@ -237,14 +277,14 @@ export interface ExamQuestionState {
                 
                 <div *ngIf="currentQ.testResult" class="mb-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-xs">
                   <div class="flex items-center justify-between mb-2">
-                    <span [class.text-emerald-400]="currentQ.testResult.status === 'ACCEPTED'" [class.text-rose-400]="currentQ.testResult.status !== 'ACCEPTED'" class="font-bold">
+                    <span [class.text-emerald-600]="currentQ.testResult.status === 'ACCEPTED'" [class.dark:text-emerald-400]="currentQ.testResult.status === 'ACCEPTED'" [class.text-rose-600]="currentQ.testResult.status !== 'ACCEPTED'" [class.dark:text-rose-400]="currentQ.testResult.status !== 'ACCEPTED'" class="font-bold">
                       Status: {{currentQ.testResult.status}}
                     </span>
                     <span class="text-[10px] text-slate-400">{{currentQ.testResult.executionTimeMs}} ms</span>
                   </div>
 
-                  <div *ngFor="let r of currentQ.testResult.testResults" class="text-[11px] text-slate-300">
-                    Test case input: {{r.input}} | Expected: {{r.expected}} | Actual: <span [class.text-emerald-400]="r.passed" [class.text-rose-400]="!r.passed">{{r.actual}}</span>
+                  <div *ngFor="let r of currentQ.testResult.testResults" class="text-[11px] text-slate-700 dark:text-slate-300">
+                    Test case input: {{r.input}} | Expected: {{r.expected}} | Actual: <span [class.text-emerald-600]="r.passed" [class.dark:text-emerald-400]="r.passed" [class.text-rose-600]="!r.passed" [class.dark:text-rose-400]="!r.passed">{{r.actual}}</span>
                   </div>
                 </div>
 
@@ -278,41 +318,45 @@ export interface ExamQuestionState {
 
         <!-- PHASE 3: FINAL SCORECARD & DETAILED REPORT -->
         <div *ngIf="examState === 'results'" class="max-w-4xl mx-auto py-8">
-          <div class="bg-slate-900 rounded-3xl p-8 sm:p-10 border border-slate-800 shadow-2xl">
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 border border-slate-200 dark:border-slate-800 shadow-2xl transition-colors">
             
             <div class="text-center mb-8">
-              <div class="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 text-3xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+              <div class="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-3xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
                 <i class="fa-solid fa-clipboard-check"></i>
               </div>
-              <h2 class="text-3xl font-extrabold text-white mb-1">Exam Scorecard Report</h2>
-              <p class="text-xs text-slate-400 font-mono">Completed in {{formatTime(totalTimeSpentSeconds)}}</p>
+              <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white mb-1">Exam Scorecard Report</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">Completed in {{formatTime(totalTimeSpentSeconds)}}</p>
             </div>
 
             <!-- Big Score Meter -->
-            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-center mb-8 max-w-sm mx-auto">
-              <span class="text-xs font-mono uppercase font-bold text-slate-400 block mb-1">Final Score</span>
-              <span class="text-4xl font-extrabold font-mono text-emerald-400">{{score}} / 5 Accepted</span>
-              <span class="text-xs font-mono text-indigo-400 block mt-2 font-bold">{{ (score / 5) * 100 }}% Accuracy Grade</span>
+            <div class="bg-slate-50 dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 text-center mb-8 max-w-sm mx-auto">
+              <span class="text-xs font-mono uppercase font-bold text-slate-500 dark:text-slate-400 block mb-1">Final Score</span>
+              <span class="text-4xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400">{{score}} / 5 Accepted</span>
+              <span class="text-xs font-mono text-indigo-600 dark:text-indigo-400 block mt-2 font-bold">{{ (score / 5) * 100 }}% Accuracy Grade</span>
             </div>
 
             <!-- Per Question Breakdown List -->
             <div class="space-y-4 mb-8">
-              <h3 class="text-xs font-mono font-bold text-slate-400 uppercase tracking-wide">Question Performance Breakdown:</h3>
+              <h3 class="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Question Performance Breakdown:</h3>
 
-              <div *ngFor="let q of examQuestions; let i = index" class="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+              <div *ngFor="let q of examQuestions; let i = index" class="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
                 <div class="flex items-center justify-between">
-                  <span class="text-sm font-bold text-white">Q{{i+1}}: {{q.problem.title}}</span>
+                  <span class="text-sm font-bold text-slate-900 dark:text-white">Q{{i+1}}: {{q.problem.title}}</span>
                   <span 
-                    [class.bg-emerald-950]="q.testResult?.status === 'ACCEPTED'"
-                    [class.text-emerald-400]="q.testResult?.status === 'ACCEPTED'"
-                    [class.bg-rose-950]="q.testResult?.status !== 'ACCEPTED'"
-                    [class.text-rose-400]="q.testResult?.status !== 'ACCEPTED'"
+                    [class.bg-emerald-100]="q.testResult?.status === 'ACCEPTED'"
+                    [class.dark:bg-emerald-950]="q.testResult?.status === 'ACCEPTED'"
+                    [class.text-emerald-700]="q.testResult?.status === 'ACCEPTED'"
+                    [class.dark:text-emerald-400]="q.testResult?.status === 'ACCEPTED'"
+                    [class.bg-rose-100]="q.testResult?.status !== 'ACCEPTED'"
+                    [class.dark:bg-rose-950]="q.testResult?.status !== 'ACCEPTED'"
+                    [class.text-rose-700]="q.testResult?.status !== 'ACCEPTED'"
+                    [class.dark:text-rose-400]="q.testResult?.status !== 'ACCEPTED'"
                     class="px-2.5 py-1 rounded-md text-xs font-mono font-bold"
                   >
                     {{q.testResult?.status || 'UNANSWERED'}}
                   </span>
                 </div>
-                <pre class="text-[11px] p-3 bg-slate-900 text-emerald-300 rounded-xl font-mono overflow-x-auto m-0 leading-relaxed">{{q.userCode}}</pre>
+                <pre class="text-[11px] p-3 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 rounded-xl font-mono overflow-x-auto m-0 leading-relaxed border border-slate-200 dark:border-slate-800">{{q.userCode}}</pre>
               </div>
             </div>
 
@@ -332,6 +376,7 @@ export interface ExamQuestionState {
 })
 export class InterviewTestComponent implements OnInit, OnDestroy {
   examState: 'launcher' | 'active' | 'results' = 'launcher';
+  selectedTrack: 'DSA' | 'JS' = 'DSA';
   
   allCurriculumProblems: Problem[] = [];
   examQuestions: ExamQuestionState[] = [];
@@ -361,6 +406,11 @@ export class InterviewTestComponent implements OnInit, OnDestroy {
     this.clearAllTimers();
   }
 
+  selectTrack(track: 'DSA' | 'JS') {
+    this.selectedTrack = track;
+    this.loadTrackConfigAndShuffle();
+  }
+
   loadAllProblemsAndInitialize() {
     this.dsaService.fetchCurriculum('').subscribe(() => {
       const curriculum = this.dsaService.curriculumSignal();
@@ -371,31 +421,37 @@ export class InterviewTestComponent implements OnInit, OnDestroy {
         }
       }
       this.allCurriculumProblems = list;
+      this.loadTrackConfigAndShuffle();
+    });
+  }
 
-      // Load admin-configured question pool with per-question time limits
-      this.dsaService.getMockTestConfig().subscribe({
-        next: (config) => {
-          // Store the admin-saved pool (id + minutes per question)
-          this.configQuestions = (config?.questions && config.questions.length > 0)
-            ? config.questions
-            : [];
-          this.shuffleQuestions();
-        },
-        error: () => {
-          this.configQuestions = [];
-          this.shuffleQuestions();
-        }
-      });
+  loadTrackConfigAndShuffle() {
+    // Load admin-configured question pool with per-question time limits for selected track
+    this.dsaService.getMockTestConfig(this.selectedTrack).subscribe({
+      next: (config) => {
+        this.configQuestions = (config?.questions && config.questions.length > 0)
+          ? config.questions
+          : [];
+        this.shuffleQuestions();
+      },
+      error: () => {
+        this.configQuestions = [];
+        this.shuffleQuestions();
+      }
     });
   }
 
   shuffleQuestions() {
-    // Build the pool: only problems that the admin has saved in mock test config
+    // 1. Filter curriculum problems strictly by current track category (DSA or JS)
+    const trackCurriculum = this.allCurriculumProblems.filter(p =>
+      (p.category || 'DSA').toUpperCase() === this.selectedTrack
+    );
+
+    // 2. Build the pool: only problems from current track that the admin configured
     let pool: { problem: Problem; minutes: number }[] = [];
 
     if (this.configQuestions.length > 0) {
-      // Map curriculum problems by id for fast lookup
-      const byId = new Map(this.allCurriculumProblems.map(p => [p.id, p]));
+      const byId = new Map(trackCurriculum.map(p => [p.id, p]));
 
       for (const cfg of this.configQuestions) {
         const prob = byId.get(cfg.id);
@@ -403,12 +459,12 @@ export class InterviewTestComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Fallback: if admin config is empty or no matches, use all curriculum problems
+    // 3. Fallback: if admin config has no matches for this track, use all problems of this track
     if (pool.length === 0) {
-      pool = this.allCurriculumProblems.map(p => ({ problem: p, minutes: this.defaultMinutesPerQ }));
+      pool = trackCurriculum.map(p => ({ problem: p, minutes: this.defaultMinutesPerQ }));
     }
 
-    // Shuffle and pick up to 5 from the admin-curated pool
+    // 4. Shuffle and pick up to 5 from the track pool
     const shuffled = pool.sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, Math.min(5, shuffled.length));
 
@@ -553,6 +609,7 @@ export class InterviewTestComponent implements OnInit, OnDestroy {
         const saveId = this.toast.loading('Saving exam report to your profile...');
         this.dsaService.submitMockTest({
           userId,
+          category: this.selectedTrack,
           score: acceptedCount,
           totalQuestions: this.examQuestions.length,
           timeSpentSeconds: this.totalTimeSpentSeconds,

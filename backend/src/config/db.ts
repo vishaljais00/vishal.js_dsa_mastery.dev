@@ -113,6 +113,7 @@ export async function initializeDatabase() {
       code TEXT NOT NULL,
       runtime_ms INT DEFAULT 0,
       pattern_tag VARCHAR(128),
+      category VARCHAR(16) DEFAULT 'DSA',
       upvotes INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (problem_id) REFERENCES problems(id) ON DELETE CASCADE,

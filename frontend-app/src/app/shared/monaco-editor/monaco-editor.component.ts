@@ -3,6 +3,7 @@ import {
   OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit, OnChanges, SimpleChanges
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MonacoLoaderService } from '../../core/services/monaco-loader.service';
 
 declare const monaco: any;
 
@@ -28,6 +29,8 @@ export class MonacoEditorComponent implements AfterViewInit, OnChanges, OnDestro
   private editor: any = null;
   private monacoLoaded = false;
 
+  constructor(private monacoLoader: MonacoLoaderService) {}
+
   ngAfterViewInit() {
     this.loadMonaco();
   }
@@ -47,20 +50,9 @@ export class MonacoEditorComponent implements AfterViewInit, OnChanges, OnDestro
   }
 
   private loadMonaco() {
-    if ((window as any).monaco) {
+    this.monacoLoader.preload().then(() => {
       this.initEditor();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'assets/monaco/vs/loader.js';
-    script.onload = () => {
-      (window as any).require.config({ paths: { vs: 'assets/monaco/vs' } });
-      (window as any).require(['vs/editor/editor.main'], () => {
-        this.initEditor();
-      });
-    };
-    document.head.appendChild(script);
+    });
   }
 
   private initEditor() {

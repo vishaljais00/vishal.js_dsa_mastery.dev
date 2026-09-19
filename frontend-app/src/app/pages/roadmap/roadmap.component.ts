@@ -43,16 +43,6 @@ import { AuthService } from '../../core/services/auth.service';
           <!-- Category Track Switcher -->
           <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto">
             <button 
-              (click)="setTrack('ALL')"
-              [class.bg-indigo-600]="selectedTrack === 'ALL'"
-              [class.text-white]="selectedTrack === 'ALL'"
-              [class.text-slate-600]="selectedTrack !== 'ALL'"
-              [class.dark:text-slate-300]="selectedTrack !== 'ALL'"
-              class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5"
-            >
-              <i class="fa-solid fa-globe"></i> All
-            </button>
-            <button 
               (click)="setTrack('DSA')"
               [class.bg-indigo-600]="selectedTrack === 'DSA'"
               [class.text-white]="selectedTrack === 'DSA'"
@@ -249,7 +239,7 @@ export class RoadmapComponent implements OnInit {
 
   searchQuery: string = '';
   selectedDifficulty: string = 'ALL';
-  selectedTrack: 'ALL' | 'DSA' | 'JS' = 'ALL';
+  selectedTrack: 'DSA' | 'JS' = 'DSA';
 
   constructor(
     public dsaService: DsaService,
@@ -263,11 +253,11 @@ export class RoadmapComponent implements OnInit {
   loadCurriculum() {
     const currentUser = this.authService.currentUserSignal();
     const userId = currentUser ? currentUser.id : '';
-    const category = this.selectedTrack === 'ALL' ? '' : this.selectedTrack;
+    const category = this.selectedTrack;
     this.dsaService.fetchCurriculum(userId, category).subscribe();
   }
 
-  setTrack(track: 'ALL' | 'DSA' | 'JS') {
+  setTrack(track: 'DSA' | 'JS') {
     this.selectedTrack = track;
     this.loadCurriculum();
   }
@@ -280,7 +270,7 @@ export class RoadmapComponent implements OnInit {
         (p.patternTag && p.patternTag.toLowerCase().includes(this.searchQuery.toLowerCase()));
       
       const matchesDiff = this.selectedDifficulty === 'ALL' || p.difficulty === this.selectedDifficulty;
-      const matchesTrack = this.selectedTrack === 'ALL' || (p.category || 'DSA') === this.selectedTrack;
+      const matchesTrack = (p.category || 'DSA') === this.selectedTrack;
       return matchesSearch && matchesDiff && matchesTrack;
     });
   }

@@ -471,7 +471,6 @@ export class ProblemViewComponent implements OnInit {
         if (res.status === 'ACCEPTED' && this.problem) {
           this.problem.isSolved = true;
 
-          // Share solution with community
           this.dsaService.shareSolution({
             problemId: this.problem.id,
             userId: currentUser.id,
@@ -479,7 +478,8 @@ export class ProblemViewComponent implements OnInit {
             avatarUrl: currentUser.avatarUrl,
             code: this.code,
             runtimeMs: res.executionTimeMs,
-            patternTag: this.problem.patternTag
+            patternTag: this.problem.patternTag,
+            category: (this.problem.category || 'DSA').toUpperCase()
           }).subscribe({
             next: () => {
               this.sharedSuccessMsg = '✅ Solution Saved & Shared with Community!';

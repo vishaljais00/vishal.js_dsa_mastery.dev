@@ -69,6 +69,7 @@ export interface CommunitySolution {
   code: string;
   runtimeMs: number;
   patternTag: string;
+  category?: string;
   upvotes: number;
   upvotedBy?: string[];
   createdAt: string;
@@ -206,6 +207,26 @@ export class MysqlStorageService {
     } catch (e: any) { console.warn('mock_test_config table check:', e?.message); }
 
     try {
+      const [mcols]: any = await pool.query("SHOW COLUMNS FROM mock_test_config LIKE 'category'");
+      if (!mcols || mcols.length === 0) {
+        await pool.query("ALTER TABLE mock_test_config ADD COLUMN category VARCHAR(16) DEFAULT 'DSA'");
+        console.log("✅ Successfully added 'category' column to MySQL mock_test_config table.");
+      }
+    } catch (err: any) {
+      console.warn("Notice checking/adding category column in mock_test_config:", err?.message);
+    }
+
+    try {
+      const [rcols]: any = await pool.query("SHOW COLUMNS FROM mock_test_results LIKE 'category'");
+      if (!rcols || rcols.length === 0) {
+        await pool.query("ALTER TABLE mock_test_results ADD COLUMN category VARCHAR(16) DEFAULT 'DSA'");
+        console.log("✅ Successfully added 'category' column to MySQL mock_test_results table.");
+      }
+    } catch (err: any) {
+      console.warn("Notice checking/adding category column in mock_test_results:", err?.message);
+    }
+
+    try {
       const [cols]: any = await pool.query("SHOW COLUMNS FROM problems LIKE 'category'");
       if (!cols || cols.length === 0) {
         await pool.query("ALTER TABLE problems ADD COLUMN category VARCHAR(16) DEFAULT 'DSA'");
@@ -280,12 +301,23 @@ export class MysqlStorageService {
           code TEXT NOT NULL,
           runtime_ms INT DEFAULT 0,
           pattern_tag VARCHAR(64) DEFAULT 'JavaScript Solution',
+          category VARCHAR(16) DEFAULT 'DSA',
           upvotes INT DEFAULT 0,
           upvoted_by JSON,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
     } catch (e: any) { console.warn('community_solutions table check:', e?.message); }
+
+    try {
+      const [cols]: any = await pool.query("SHOW COLUMNS FROM community_solutions LIKE 'category'");
+      if (!cols || cols.length === 0) {
+        await pool.query("ALTER TABLE community_solutions ADD COLUMN category VARCHAR(16) DEFAULT 'DSA'");
+        console.log("✅ Successfully added 'category' column to MySQL community_solutions table.");
+      }
+    } catch (err: any) {
+      console.warn("Notice checking/adding category column in community_solutions:", err?.message);
+    }
 
     try {
       await pool.query('SET FOREIGN_KEY_CHECKS = 1');
@@ -306,35 +338,35 @@ export class MysqlStorageService {
       console.log('✅ Default Admin user created (username: admin / password: admin123)');
     }
 
-    const [dsaCount]: any = await pool.query("SELECT COUNT(*) as count FROM problems WHERE category = 'DSA'");
-    if (dsaCount[0].count < 30) {
-      await pool.query("DELETE FROM problems WHERE category = 'DSA'");
-      for (const day of CURRICULUM_DATA) {
-        for (const p of day.problems) {
-          await pool.query(
-            `INSERT IGNORE INTO problems (id, category, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
-             VALUES (?, 'DSA', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [p.id, day.dayNumber, day.weekNumber, p.title, p.difficulty, p.patternTag, p.description, p.starterCode, JSON.stringify(p.testCases), p.solutionHint || '']
-          );
-        }
+    // Ensure existing JS curriculum problems in MySQL have category = 'JS'
+    for (const day of JS_CURRICULUM_DATA) {
+      for (const p of day.problems) {
+        await pool.query("UPDATE problems SET category = 'JS' WHERE id = ?", [p.id]);
       }
-      console.log('✅ DSA curriculum problems seeded into MySQL.');
     }
 
-    const [jsCount]: any = await pool.query("SELECT COUNT(*) as count FROM problems WHERE category = 'JS'");
-    if (jsCount[0].count < 30) {
-      await pool.query("DELETE FROM problems WHERE category = 'JS'");
-      for (const day of JS_CURRICULUM_DATA) {
-        for (const p of day.problems) {
-          await pool.query(
-            `INSERT IGNORE INTO problems (id, category, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
-             VALUES (?, 'JS', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [p.id, day.dayNumber, day.weekNumber, p.title, p.difficulty, p.patternTag, p.description, p.starterCode, JSON.stringify(p.testCases), p.solutionHint || '']
-          );
-        }
+    for (const day of CURRICULUM_DATA) {
+      for (const p of day.problems) {
+        await pool.query(
+          `INSERT INTO problems (id, category, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
+           VALUES (?, 'DSA', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE day_number = VALUES(day_number), week_number = VALUES(week_number), title = VALUES(title)`,
+          [p.id, day.dayNumber, day.weekNumber, p.title, p.difficulty, p.patternTag, p.description, p.starterCode, JSON.stringify(p.testCases), p.solutionHint || '']
+        );
       }
-      console.log('✅ JS Mastery curriculum problems seeded into MySQL.');
     }
+
+    for (const day of JS_CURRICULUM_DATA) {
+      for (const p of day.problems) {
+        await pool.query(
+          `INSERT INTO problems (id, category, day_number, week_number, title, difficulty, pattern_tag, description, starter_code, test_cases, solution_hint, created_at)
+           VALUES (?, 'JS', ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE category = 'JS', day_number = VALUES(day_number), week_number = VALUES(week_number), title = VALUES(title)`,
+          [p.id, day.dayNumber, day.weekNumber, p.title, p.difficulty, p.patternTag, p.description, p.starterCode, JSON.stringify(p.testCases), p.solutionHint || '']
+        );
+      }
+    }
+    console.log('✅ DSA and JS curriculum problems synchronized into MySQL.');
   }
 
   // --- AUTH & CALENDAR-BASED STREAK METHODS ---
@@ -642,8 +674,16 @@ export class MysqlStorageService {
   }
 
   // --- CURRICULUM & PROBLEM METHODS ---
-  public static async getCurriculum(userId?: string): Promise<any> {
-    const [problems]: any = await pool.query('SELECT * FROM problems ORDER BY week_number, day_number, created_at');
+  public static async getCurriculum(userId?: string, category?: string): Promise<any> {
+    let sql = 'SELECT * FROM problems';
+    const params: any[] = [];
+    if (category && category !== 'ALL' && category !== 'all') {
+      sql += ' WHERE category = ?';
+      params.push(category);
+    }
+    sql += ' ORDER BY week_number, day_number, created_at';
+
+    const [problems]: any = await pool.query(sql, params);
     
     let userProgressMap: { [probId: string]: { isSolved: boolean; savedCode: string } } = {};
     let visitedSet = new Set<string>();
@@ -670,15 +710,22 @@ export class MysqlStorageService {
       const mapKey = `${cat}:${dayNum}`; // composite key prevents DSA/JS day collision
       if (!dayMap.has(mapKey)) {
         const curriculumSet = cat === 'JS' ? JS_CURRICULUM_DATA : CURRICULUM_DATA;
-        const templateDay = curriculumSet.find(d => d.dayNumber === dayNum) || {
+        const templateDay: any = curriculumSet.find(d => d.dayNumber === dayNum) || {
           dayNumber: dayNum,
           weekNumber: p.week_number,
           title: `Day ${dayNum} Practice`,
-          learnTopics: ['Core JavaScript Problem Solving']
+          learnTopics: ['Core JavaScript Problem Solving'],
+          codeSnippets: [],
+          targetSummary: ''
         };
 
         dayMap.set(mapKey, {
-          ...templateDay,
+          dayNumber: templateDay.dayNumber,
+          weekNumber: templateDay.weekNumber,
+          title: templateDay.title,
+          learnTopics: templateDay.learnTopics,
+          codeSnippets: templateDay.codeSnippets || [],
+          targetSummary: templateDay.targetSummary || '',
           category: cat,
           problems: []
         });
@@ -770,28 +817,36 @@ export class MysqlStorageService {
   // --- MOCK TEST EXAM HISTORY METHODS ---
   public static async saveMockTestResult(data: {
     userId: string;
+    category?: string;
     score: number;
     totalQuestions: number;
     timeSpentSeconds: number;
     answersJson: any;
   }): Promise<any> {
     const id = `mock_${Date.now()}`;
+    const category = (data.category || 'DSA').toUpperCase();
     await pool.query(
-      `INSERT INTO mock_test_results (id, user_id, score, total_questions, time_spent_seconds, answers_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [id, data.userId, data.score, data.totalQuestions, data.timeSpentSeconds, JSON.stringify(data.answersJson)]
+      `INSERT INTO mock_test_results (id, user_id, category, score, total_questions, time_spent_seconds, answers_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [id, data.userId, category, data.score, data.totalQuestions, data.timeSpentSeconds, JSON.stringify(data.answersJson)]
     );
-    return { ...data, id, createdAt: new Date().toISOString() };
+    return { ...data, category, id, createdAt: new Date().toISOString() };
   }
 
-  public static async getMockTestHistory(userId: string): Promise<any[]> {
-    const [rows]: any = await pool.query(
-      'SELECT * FROM mock_test_results WHERE user_id = ? ORDER BY created_at DESC',
-      [userId]
-    );
+  public static async getMockTestHistory(userId: string, category?: string): Promise<any[]> {
+    let sql = 'SELECT * FROM mock_test_results WHERE user_id = ?';
+    const params: any[] = [userId];
+    if (category && category !== 'ALL') {
+      sql += ' AND UPPER(category) = ?';
+      params.push(category.toUpperCase());
+    }
+    sql += ' ORDER BY created_at DESC';
+
+    const [rows]: any = await pool.query(sql, params);
 
     return rows.map((r: any) => ({
       id: r.id,
+      category: r.category || 'DSA',
       score: r.score,
       totalQuestions: r.total_questions,
       timeSpentSeconds: r.time_spent_seconds,
@@ -821,6 +876,7 @@ export class MysqlStorageService {
         code: row.code,
         runtimeMs: row.runtime_ms,
         patternTag: row.pattern_tag,
+        category: (row.category || 'DSA').toUpperCase(),
         upvotes: row.upvotes,
         upvotedBy,
         createdAt: row.created_at
@@ -838,15 +894,39 @@ export class MysqlStorageService {
     code: string;
     runtimeMs: number;
     patternTag: string;
+    category?: string;
   }): Promise<CommunitySolution> {
-    const id = `sol_${Date.now()}`;
-    await pool.query(
-      `INSERT INTO community_solutions (id, problem_id, user_id, username, avatar_url, code, runtime_ms, pattern_tag, upvotes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())`,
-      [id, data.problemId, data.userId, data.username, data.avatarUrl, data.code, data.runtimeMs, data.patternTag]
+    let cat = (data.category || '').toUpperCase();
+    if (!cat) {
+      const [prows]: any = await pool.query('SELECT category FROM problems WHERE id = ?', [data.problemId]);
+      cat = (prows && prows.length > 0 && prows[0].category) ? prows[0].category.toUpperCase() : 'DSA';
+    }
+
+    const [existing]: any = await pool.query(
+      'SELECT id, upvotes FROM community_solutions WHERE problem_id = ? AND user_id = ?',
+      [data.problemId, data.userId]
     );
 
-    return { ...data, id, upvotes: 0, upvotedBy: [], createdAt: new Date().toISOString() };
+    if (existing && existing.length > 0) {
+      const solId = existing[0].id;
+      const currentUpvotes = existing[0].upvotes || 0;
+      await pool.query(
+        `UPDATE community_solutions
+         SET username = ?, avatar_url = ?, code = ?, runtime_ms = ?, pattern_tag = ?, category = ?, created_at = NOW()
+         WHERE id = ?`,
+        [data.username, data.avatarUrl, data.code, data.runtimeMs, data.patternTag, cat, solId]
+      );
+      return { ...data, category: cat, id: solId, upvotes: currentUpvotes, upvotedBy: [], createdAt: new Date().toISOString() };
+    }
+
+    const id = `sol_${Date.now()}`;
+    await pool.query(
+      `INSERT INTO community_solutions (id, problem_id, user_id, username, avatar_url, code, runtime_ms, pattern_tag, category, upvotes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())`,
+      [id, data.problemId, data.userId, data.username, data.avatarUrl, data.code, data.runtimeMs, data.patternTag, cat]
+    );
+
+    return { ...data, category: cat, id, upvotes: 0, upvotedBy: [], createdAt: new Date().toISOString() };
   }
 
   public static async upvoteSolution(solutionId: string, userId: string): Promise<CommunitySolution> {
@@ -950,22 +1030,41 @@ export class MysqlStorageService {
     }));
   }
 
-  public static async getMockTestConfig(): Promise<any> {
-    const [rows]: any = await pool.query('SELECT * FROM mock_test_config ORDER BY id DESC LIMIT 1');
+  public static async getMockTestConfig(category: string = 'DSA'): Promise<any> {
+    const catUpper = (category || 'DSA').toUpperCase();
+    const [rows]: any = await pool.query(
+      'SELECT * FROM mock_test_config WHERE UPPER(category) = ? ORDER BY id DESC LIMIT 1',
+      [catUpper]
+    );
+
     if (rows.length > 0) {
       const rawIds = typeof rows[0].problem_ids === 'string' ? JSON.parse(rows[0].problem_ids) : rows[0].problem_ids;
-      // Support legacy format (array of strings) and new format (array of {id, minutes})
       const questions: { id: string; minutes: number }[] = Array.isArray(rawIds)
         ? rawIds.map((item: any) =>
             typeof item === 'string'
-              ? { id: item, minutes: Math.round((rows[0].time_limit_minutes || 120) / rawIds.length) }
+              ? { id: item, minutes: Math.round((rows[0].time_limit_minutes || 95) / rawIds.length) }
               : { id: item.id, minutes: item.minutes || 20 }
           )
         : [];
-      return { questions, totalMinutes: questions.reduce((s: number, q: any) => s + q.minutes, 0) };
+      return { category: catUpper, questions, totalMinutes: questions.reduce((s: number, q: any) => s + q.minutes, 0) };
     }
-    // Default config
+
+    if (catUpper === 'JS') {
+      return {
+        category: 'JS',
+        questions: [
+          { id: 'js-execution-context', minutes: 20 },
+          { id: 'js-custom-higher-order', minutes: 20 },
+          { id: 'js-deep-clone', minutes: 20 },
+          { id: 'js-custom-promise-all', minutes: 20 },
+          { id: 'js-event-emitter', minutes: 20 }
+        ],
+        totalMinutes: 100
+      };
+    }
+
     return {
+      category: 'DSA',
       questions: [
         { id: 'two-sum', minutes: 20 },
         { id: 'longest-substring-without-repeating-characters', minutes: 20 },
@@ -977,13 +1076,14 @@ export class MysqlStorageService {
     };
   }
 
-  public static async updateMockTestConfig(questions: { id: string; minutes: number }[]): Promise<any> {
+  public static async updateMockTestConfig(questions: { id: string; minutes: number }[], category: string = 'DSA'): Promise<any> {
+    const catUpper = (category || 'DSA').toUpperCase();
     const totalMinutes = questions.reduce((s, q) => s + (q.minutes || 20), 0);
     await pool.query(
-      'INSERT INTO mock_test_config (problem_ids, time_limit_minutes) VALUES (?, ?)',
-      [JSON.stringify(questions), totalMinutes]
+      'INSERT INTO mock_test_config (category, problem_ids, time_limit_minutes) VALUES (?, ?, ?)',
+      [catUpper, JSON.stringify(questions), totalMinutes]
     );
-    return { questions, totalMinutes };
+    return { category: catUpper, questions, totalMinutes };
   }
 
   // --- UPDATE PROBLEM (Admin Edit) ---
@@ -1015,18 +1115,38 @@ export class MysqlStorageService {
   }
 
   // --- LEADERBOARD ---
-  public static async getLeaderboard(): Promise<any[]> {
-    const [rows]: any = await pool.query(`
-      SELECT u.id, u.username, u.name, u.avatar_url,
-             u.login_streak,
-             COUNT(DISTINCT p.problem_id) AS solved_count
-      FROM users u
-      LEFT JOIN user_progress p ON p.user_id = u.id AND p.is_solved = 1
-      WHERE u.role != 'admin'
-      GROUP BY u.id
-      ORDER BY solved_count DESC, u.login_streak DESC
-      LIMIT 50
-    `);
+  public static async getLeaderboard(category: string = 'ALL'): Promise<any[]> {
+    const catUpper = (category || 'ALL').toUpperCase();
+    let sql: string;
+    const params: any[] = [];
+
+    if (catUpper !== 'ALL') {
+      sql = `
+        SELECT u.id, u.username, u.name, u.avatar_url,
+               u.login_streak,
+               COUNT(DISTINCT IF(pr.id IS NOT NULL, p.problem_id, NULL)) AS solved_count
+        FROM users u
+        LEFT JOIN user_progress p ON p.user_id = u.id AND p.is_solved = 1
+        LEFT JOIN problems pr ON p.problem_id = pr.id AND UPPER(pr.category) = ?
+        GROUP BY u.id
+        ORDER BY solved_count DESC, u.login_streak DESC
+        LIMIT 50
+      `;
+      params.push(catUpper);
+    } else {
+      sql = `
+        SELECT u.id, u.username, u.name, u.avatar_url,
+               u.login_streak,
+               COUNT(DISTINCT p.problem_id) AS solved_count
+        FROM users u
+        LEFT JOIN user_progress p ON p.user_id = u.id AND p.is_solved = 1
+        GROUP BY u.id
+        ORDER BY solved_count DESC, u.login_streak DESC
+        LIMIT 50
+      `;
+    }
+
+    const [rows]: any = await pool.query(sql, params);
     return rows.map((r: any, idx: number) => ({
       rank: idx + 1,
       id: r.id,

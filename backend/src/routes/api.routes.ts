@@ -128,8 +128,9 @@ router.post('/auth/reset-password', authLimiter, async (req, res) => {
 router.get('/curriculum', async (req, res) => {
   try {
     const userId = (req.query.userId as string) || '';
-    const category = (req.query.category as string) || '';
-    const cacheKey = `curriculum:${userId || 'guest'}:${category || 'all'}`;
+    const rawCategory = (req.query.category as string) || '';
+    const category = rawCategory.trim().toUpperCase();
+    const cacheKey = `curriculum:${userId || 'guest'}:${category || 'ALL'}`;
 
     // Check cache
     const cachedData = await CacheService.get(cacheKey);
@@ -137,12 +138,12 @@ router.get('/curriculum', async (req, res) => {
       return res.json(JSON.parse(cachedData));
     }
 
-    const result = await MysqlStorageService.getCurriculum(userId);
+    const result = await MysqlStorageService.getCurriculum(userId, category);
     // If category specified, filter returned problems
     if (category && category !== 'ALL') {
       result.curriculum = result.curriculum.map((day: any) => ({
         ...day,
-        problems: day.problems.filter((p: any) => (p.category || 'DSA') === category)
+        problems: day.problems.filter((p: any) => (p.category || 'DSA').toUpperCase() === category)
       })).filter((day: any) => day.problems.length > 0);
     }
 
@@ -180,8 +181,9 @@ router.post('/execute', authLimiter, async (req, res) => {
     // Upsert code into MySQL database
     if (userId && userId !== 'user_guest' && userId !== 'null' && problemId) {
       await MysqlStorageService.upsertProgress(userId, problemId, isSolved, code);
-      // Invalidate user curriculum cache on progress update
-      await CacheService.del(`curriculum:${userId}`);
+      // Invalidate user curriculum and leaderboard cache on progress update
+      await CacheService.del('curriculum:*');
+      await CacheService.del('leaderboard:*');
     }
 
     res.json(result);
@@ -206,17 +208,19 @@ router.post('/save-code', async (req, res) => {
 // --- MOCK TEST RESULTS ROUTES ---
 router.post('/mock-test/submit', async (req, res) => {
   try {
-    const { userId, score, totalQuestions, timeSpentSeconds, answersJson } = req.body;
+    const { userId, category, score, totalQuestions, timeSpentSeconds, answersJson } = req.body;
     if (!userId || userId === 'user_guest') {
       return res.status(401).json({ error: 'Log in to save mock exam results' });
     }
     const result = await MysqlStorageService.saveMockTestResult({
       userId,
+      category: category || 'DSA',
       score: score || 0,
       totalQuestions: totalQuestions || 5,
       timeSpentSeconds: timeSpentSeconds || 0,
       answersJson: answersJson || {}
     });
+    await CacheService.del('leaderboard:*');
     res.json(result);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -226,7 +230,8 @@ router.post('/mock-test/submit', async (req, res) => {
 router.get('/mock-test/history/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const history = await MysqlStorageService.getMockTestHistory(userId);
+    const category = (req.query.category as string) || 'ALL';
+    const history = await MysqlStorageService.getMockTestHistory(userId, category);
     res.json(history);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -236,6 +241,7 @@ router.get('/mock-test/history/:userId', async (req, res) => {
 // --- COMMUNITY SOLUTIONS ROUTES ---
 router.get('/solutions/:problemId', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     const { problemId } = req.params;
     const solutions = await MysqlStorageService.getCommunitySolutions(problemId);
     res.json(solutions);
@@ -246,7 +252,7 @@ router.get('/solutions/:problemId', async (req, res) => {
 
 router.post('/solutions', async (req, res) => {
   try {
-    const { problemId, userId, username, avatarUrl, code, runtimeMs, patternTag } = req.body;
+    const { problemId, userId, username, avatarUrl, code, runtimeMs, patternTag, category } = req.body;
     if (!userId || userId === 'user_guest') {
       return res.status(401).json({ error: 'You must be logged in to share solutions' });
     }
@@ -257,7 +263,8 @@ router.post('/solutions', async (req, res) => {
       avatarUrl: avatarUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Learner',
       code,
       runtimeMs: runtimeMs || 0,
-      patternTag: patternTag || 'JavaScript Solution'
+      patternTag: patternTag || 'JavaScript Solution',
+      category: category ? category.toUpperCase() : undefined
     });
     res.json(newSol);
   } catch (err: any) {
@@ -301,6 +308,7 @@ router.post('/admin/problems', async (req, res) => {
       testCases: testCases || [],
       solutionHint: solutionHint || ''
     });
+    await CacheService.del('curriculum:*');
     res.json(newProb);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -318,8 +326,9 @@ router.get('/admin/users-activity', async (req, res) => {
 
 router.get('/admin/mock-test', async (req, res) => {
   try {
-    const config = await MysqlStorageService.getMockTestConfig();
-    res.json(config); // Returns { questions: [{id, minutes}], totalMinutes }
+    const category = (req.query.category as string) || 'DSA';
+    const config = await MysqlStorageService.getMockTestConfig(category);
+    res.json(config); // Returns { category, questions: [{id, minutes}], totalMinutes }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -327,11 +336,12 @@ router.get('/admin/mock-test', async (req, res) => {
 
 router.post('/admin/mock-test', async (req, res) => {
   try {
-    const { questions } = req.body;
+    const { questions, category } = req.body;
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return res.status(400).json({ error: 'questions array is required' });
     }
-    const updated = await MysqlStorageService.updateMockTestConfig(questions);
+    const updated = await MysqlStorageService.updateMockTestConfig(questions, category || 'DSA');
+    await CacheService.del('curriculum:*');
     res.json(updated);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -345,6 +355,7 @@ router.put('/admin/problems/:id', async (req, res) => {
     const { adminUserId, category, title, description, difficulty, patternTag, solutionHint, testCases } = req.body;
     if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
     await MysqlStorageService.updateProblem(id, { category, title, description, difficulty, patternTag, solutionHint, testCases });
+    await CacheService.del('curriculum:*');
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -358,6 +369,7 @@ router.delete('/admin/problems/:id', async (req, res) => {
     const { adminUserId } = req.body;
     if (!adminUserId) return res.status(403).json({ error: 'Admin authorization required' });
     await MysqlStorageService.deleteProblem(id);
+    await CacheService.del('curriculum:*');
     res.json({ success: true });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -509,17 +521,16 @@ router.delete('/admin/guidebook/subtopic/:id', async (req, res) => {
   }
 });
 
-// --- LEADERBOARD (CACHED) ---
+// --- LEADERBOARD ---
 router.get('/leaderboard', async (req, res) => {
   try {
-    const cacheKey = 'leaderboard';
-    const cached = await CacheService.get(cacheKey);
-    if (cached) {
-      return res.json(JSON.parse(cached));
-    }
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    const rawCategory = (req.query.category as string) || '';
+    const category = rawCategory.trim().toUpperCase() || 'DSA';
 
-    const data = await MysqlStorageService.getLeaderboard();
-    await CacheService.set(cacheKey, JSON.stringify(data), 60); // 60s TTL
+    const data = await MysqlStorageService.getLeaderboard(category);
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

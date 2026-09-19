@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ThemeService } from '../../core/services/theme.service';
+import { MonacoEditorComponent } from '../../shared/monaco-editor/monaco-editor.component';
 
 interface ConsoleLog {
   type: 'log' | 'warn' | 'error' | 'info';
@@ -13,7 +14,7 @@ interface ConsoleLog {
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, MonacoEditorComponent],
   template: `
     <div class="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-100 py-6 transition-colors font-sans">
       <div class="max-w-7xl mx-auto px-4">
@@ -43,6 +44,7 @@ interface ConsoleLog {
             >
               <option value="custom">-- Preset JS Snippets --</option>
               <option value="async">Event Loop &amp; Promises</option>
+              <option value="fetch">Fetch API &amp; Async/Await</option>
               <option value="closure">Closure &amp; Encapsulation</option>
               <option value="debounce">Custom Debounce Function</option>
               <option value="twosum">Two Sum Algorithm</option>
@@ -83,14 +85,15 @@ interface ConsoleLog {
               </button>
             </div>
 
-            <!-- Code Input Textarea -->
-            <textarea 
-              [(ngModel)]="code" 
-              (keydown.control.enter)="runCode()"
-              spellcheck="false"
-              placeholder="// Write your JavaScript code here..."
-              class="w-full flex-1 bg-white dark:bg-slate-900 text-slate-800 dark:text-emerald-400 p-5 font-mono text-xs sm:text-sm leading-relaxed border-none outline-none resize-none font-medium selection:bg-indigo-500/40"
-            ></textarea>
+            <!-- Code Monaco Editor -->
+            <div class="flex-1 w-full min-h-[480px]">
+              <app-monaco-editor 
+                [value]="code" 
+                (valueChange)="code = $event" 
+                [language]="'javascript'"
+                [theme]="themeService.themeSignal() === 'dark' ? 'vs-dark' : 'vs-light'"
+              ></app-monaco-editor>
+            </div>
           </div>
 
           <!-- Console Output Pane -->
@@ -152,7 +155,7 @@ interface ConsoleLog {
             <!-- Security Footer Note -->
             <div class="px-4 py-2 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-[11px] font-mono text-slate-400 dark:text-slate-500 flex items-center justify-between">
               <span>Status: <strong [class.text-emerald-600]="(status === 'IDLE' || status === 'SUCCESS') && themeService.themeSignal() === 'light'" [class.text-emerald-400]="(status === 'IDLE' || status === 'SUCCESS') && themeService.themeSignal() === 'dark'" [class.text-rose-600]="status === 'ERROR' && themeService.themeSignal() === 'light'" [class.text-rose-400]="status === 'ERROR' && themeService.themeSignal() === 'dark'">{{ status }}</strong></span>
-              <span>Worker Timeout: 2.0s</span>
+              <span>Async Execution: Up to 10s max</span>
             </div>
           </div>
 
@@ -196,8 +199,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy {
 console.log('1: Synchronous start');
 
 setTimeout(() => {
-  console.warn('4: Macrotask (setTimeout 0ms)');
-}, 0);
+  console.warn('4: Macrotask (setTimeout 2000ms)');
+}, 2000);
 
 Promise.resolve().then(() => {
   console.log('2: Microtask (Promise 1)');
@@ -206,6 +209,26 @@ Promise.resolve().then(() => {
 });
 
 console.log('5: Synchronous end');`;
+        break;
+      case 'fetch':
+        this.code = `// Fetch API & Async/Await Demo
+console.log('1: Dispatching HTTP GET request to JSONPlaceholder API...');
+
+async function fetchTodo() {
+  try {
+    const response = await fetch('https://jsonplaceholder.typicode.com/todos/1');
+    const data = await response.json();
+    console.log('2: Received Todo Data from API:');
+    console.log('   ID:', data.id);
+    console.log('   Title:', data.title);
+    console.log('   Completed:', data.completed);
+  } catch (error) {
+    console.error('Fetch Error:', error);
+  }
+}
+
+fetchTodo();
+console.log('3: Async function dispatched!');`;
         break;
       case 'closure':
         this.code = `// Closure & Private State Demo
@@ -287,7 +310,6 @@ console.log('Indices for Target 9:', result);`;
       /\bprocess\b/i,
       /\bglobal\b/i,
       /\bglobalThis\b/i,
-      /\bself\b/i,
       /\bimportScripts\b/i,
       /\bpostMessage\b/i,
       /\bonmessage\b/i,
@@ -302,7 +324,8 @@ console.log('Indices for Target 9:', result);`;
       /\b__dirname\b/i,
       /\b__filename\b/i,
       /\bconstructor\s*\.\s*constructor\b/i,
-      /\bFunction\s*\(/i,
+      /\bnew\s+Function\b/i,
+      /\bFunction\s*\(/,
       /\beval\s*\(/i,
       /\bReflect\b/i,
       /\bProxy\b/i,
@@ -318,7 +341,7 @@ console.log('Indices for Target 9:', result);`;
   }
 
   runCode() {
-    if (this.isRunning) return;
+    this.terminateWorker();
     this.clearConsole();
 
     // Security check: pre-sanitize playground code before execution
@@ -345,10 +368,10 @@ console.log('Indices for Target 9:', result);`;
       self.onmessage = function(e) {
         const code = e.data;
         
-        // Security: Redefine/disable unsafe globals
+        // Security: Redefine/disable unsafe DOM/Node globals while exposing safe Web API fetch
         const window = undefined;
         const document = undefined;
-        const fetch = undefined;
+        const fetch = typeof self.fetch === 'function' ? self.fetch.bind(self) : undefined;
         const XMLHttpRequest = undefined;
         const WebSocket = undefined;
         const localStorage = undefined;
@@ -402,13 +425,29 @@ console.log('Indices for Target 9:', result);`;
     const workerUrl = URL.createObjectURL(blob);
     this.worker = new Worker(workerUrl);
 
-    // Timeout guard (2 seconds max)
-    const timeoutTimer = setTimeout(() => {
+    // 1. Sync Infinite Loop Guard (3 seconds max for synchronous execution to finish)
+    let syncTimeoutTimer: any = setTimeout(() => {
+      if (this.status === 'RUNNING') {
+        this.executionError = 'Execution Error: Maximum Time Limit Exceeded (3000ms). Infinite loop detected.';
+        this.status = 'ERROR';
+        this.isRunning = false;
+        this.terminateWorker();
+      }
+    }, 3000);
+
+    // 2. Overall Max Async Lifespan (10 seconds max for async setTimeouts / delayed callbacks)
+    let maxAsyncTimer: any = setTimeout(() => {
       this.terminateWorker();
-      this.executionError = 'Execution Error: Maximum Time Limit Exceeded (2000ms). Infinite loop detected.';
-      this.status = 'ERROR';
-      this.isRunning = false;
-    }, 2000);
+    }, 10000);
+
+    // 3. Idle Worker Cleanup (Terminates 3.5s after the LAST log message arrives)
+    let idleTimer: any = null;
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        this.terminateWorker();
+      }, 3500);
+    };
 
     this.worker.onmessage = (event) => {
       const data = event.data;
@@ -416,14 +455,19 @@ console.log('Indices for Target 9:', result);`;
 
       if (data.type === 'log' || data.type === 'warn' || data.type === 'error' || data.type === 'info') {
         this.logs.push({ type: data.type, message: data.message, timestamp: nowStr });
+        resetIdleTimer();
       } else if (data.type === 'DONE') {
-        clearTimeout(timeoutTimer);
+        clearTimeout(syncTimeoutTimer);
         this.executionTimeMs = Math.round(performance.now() - startTime);
-        this.status = 'SUCCESS';
+        if (this.status === 'RUNNING') {
+          this.status = 'SUCCESS';
+        }
         this.isRunning = false;
-        this.terminateWorker();
+        resetIdleTimer();
       } else if (data.type === 'ERROR') {
-        clearTimeout(timeoutTimer);
+        clearTimeout(syncTimeoutTimer);
+        clearTimeout(maxAsyncTimer);
+        if (idleTimer) clearTimeout(idleTimer);
         this.executionError = data.error;
         this.status = 'ERROR';
         this.isRunning = false;
@@ -432,7 +476,9 @@ console.log('Indices for Target 9:', result);`;
     };
 
     this.worker.onerror = (err) => {
-      clearTimeout(timeoutTimer);
+      clearTimeout(syncTimeoutTimer);
+      clearTimeout(maxAsyncTimer);
+      if (idleTimer) clearTimeout(idleTimer);
       this.executionError = err.message || 'Worker execution error';
       this.status = 'ERROR';
       this.isRunning = false;

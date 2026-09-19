@@ -12,25 +12,58 @@ import { AuthService } from '../../core/services/auth.service';
     <div class="bg-slate-50 dark:bg-slate-950 min-h-screen py-10 transition-colors">
       <div class="max-w-6xl mx-auto px-4">
 
-        <!-- Header -->
-        <div class="flex items-center gap-4 mb-8">
-          <a routerLink="/" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-indigo-600 transition-all shadow-sm">
-            <i class="fa-solid fa-arrow-left text-sm"></i>
-          </a>
-          <div>
-            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white m-0 flex items-center gap-2">
-              🏆 Community Leaderboard
-            </h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-              Ranked by total solved DSA problems &amp; active daily login streaks
-            </p>
+        <!-- Header & Category Filter Bar -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div class="flex items-center gap-4">
+            <a routerLink="/" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 hover:text-indigo-600 transition-all shadow-sm">
+              <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div>
+              <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white m-0 flex items-center gap-2">
+                🏆 Community Leaderboard
+              </h1>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                Ranked by total solved problems &amp; active daily login streaks
+              </p>
+            </div>
+          </div>
+
+          <!-- CATEGORY TAB BUTTONS (DSA & JS TRACKS) -->
+          <div class="flex items-center gap-2 bg-slate-200/70 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shrink-0">
+            <button
+              (click)="setCategory('DSA')"
+              [class.bg-white]="selectedCategory === 'DSA'"
+              [class.dark:bg-slate-800]="selectedCategory === 'DSA'"
+              [class.text-indigo-600]="selectedCategory === 'DSA'"
+              [class.dark:text-indigo-400]="selectedCategory === 'DSA'"
+              [class.shadow-xs]="selectedCategory === 'DSA'"
+              [class.text-slate-600]="selectedCategory !== 'DSA'"
+              [class.dark:text-slate-400]="selectedCategory !== 'DSA'"
+              class="px-4 py-1.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-square-code"></i> DSA Track
+            </button>
+
+            <button
+              (click)="setCategory('JS')"
+              [class.bg-white]="selectedCategory === 'JS'"
+              [class.dark:bg-slate-800]="selectedCategory === 'JS'"
+              [class.text-indigo-600]="selectedCategory === 'JS'"
+              [class.dark:text-indigo-400]="selectedCategory === 'JS'"
+              [class.shadow-xs]="selectedCategory === 'JS'"
+              [class.text-slate-600]="selectedCategory !== 'JS'"
+              [class.dark:text-slate-400]="selectedCategory !== 'JS'"
+              class="px-4 py-1.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5"
+            >
+              <i class="fa-brands fa-js"></i> JS Track
+            </button>
           </div>
         </div>
 
         <!-- Loading -->
         <div *ngIf="loading" class="flex flex-col items-center justify-center py-20 gap-4">
           <i class="fa-solid fa-circle-notch fa-spin text-indigo-500 text-3xl"></i>
-          <p class="text-xs font-mono text-slate-400">Fetching rankings...</p>
+          <p class="text-xs font-mono text-slate-400">Fetching {{selectedCategory}} rankings...</p>
         </div>
 
         <!-- Main Content Grid -->
@@ -38,7 +71,7 @@ import { AuthService } from '../../core/services/auth.service';
           
           <!-- Leaderboard Table (Main Panel) -->
           <div class="lg:col-span-2 space-y-3">
-            <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">🏆 Top 10 Leaders</h2>
+            <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">🏆 Top 10 Leaders ({{selectedCategory}} Track)</h2>
             <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
               <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -52,7 +85,7 @@ import { AuthService } from '../../core/services/auth.service';
                   </thead>
                   <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300">
                     <tr *ngFor="let user of users" 
-                        [ngClass]="{'bg-indigo-50/40 dark:bg-indigo-950/30': user.id === currentUserId}"
+                        [ngClass]="{'bg-indigo-50/40 dark:bg-indigo-950/30': isCurrentUser(user)}"
                         class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       
                       <!-- Rank Badge -->
@@ -70,7 +103,7 @@ import { AuthService } from '../../core/services/auth.service';
                           <div>
                             <div class="font-extrabold text-slate-900 dark:text-white font-mono flex items-center gap-2">
                               {{ user.username }}
-                              <span *ngIf="user.id === currentUserId" class="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-sans">You</span>
+                              <span *ngIf="isCurrentUser(user)" class="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-sans">You</span>
                             </div>
                             <span class="text-[11px] text-slate-400 font-mono block">{{ user.name }}</span>
                           </div>
@@ -97,7 +130,7 @@ import { AuthService } from '../../core/services/auth.service';
                     </tr>
 
                     <tr *ngIf="users.length === 0">
-                      <td colspan="4" class="text-center py-10 text-slate-400 font-mono">No active learners on the leaderboard yet.</td>
+                      <td colspan="4" class="text-center py-10 text-slate-400 font-mono">No active learners on the {{selectedCategory}} leaderboard yet.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -107,7 +140,7 @@ import { AuthService } from '../../core/services/auth.service';
 
           <!-- Your Standing Card (Sidebar) -->
           <div class="lg:col-span-1 space-y-3">
-            <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">🎯 Your Standing</h2>
+            <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">🎯 Your Standing ({{selectedCategory}})</h2>
             
             <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col items-center text-center transition-colors">
               <div *ngIf="currentUserStats" class="w-full flex flex-col items-center">
@@ -151,7 +184,7 @@ import { AuthService } from '../../core/services/auth.service';
 
                 <!-- Advice message -->
                 <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-4 leading-relaxed font-sans">
-                  Keep solving to climb higher! You are actively ranked on the leaderboard.
+                  Keep solving to climb higher! You are actively ranked on the {{selectedCategory}} leaderboard.
                 </p>
               </div>
 
@@ -164,7 +197,7 @@ import { AuthService } from '../../core/services/auth.service';
                   Not Ranked
                 </h3>
                 <p class="text-xs text-slate-400 dark:text-slate-500 max-w-[200px] leading-relaxed mb-4">
-                  You have 0 solved problems or you are not logged in.
+                  You have 0 solved problems in {{selectedCategory}} or you are not logged in.
                 </p>
                 <a routerLink="/" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold font-mono text-xs shadow-md shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer">
                   Start Solving <i class="fa-solid fa-arrow-right"></i>
@@ -180,6 +213,7 @@ import { AuthService } from '../../core/services/auth.service';
   `
 })
 export class LeaderboardComponent implements OnInit {
+  selectedCategory: 'DSA' | 'JS' = 'DSA';
   users: any[] = [];
   currentUserStats: any = null;
   loading = true;
@@ -193,21 +227,46 @@ export class LeaderboardComponent implements OnInit {
   ngOnInit() {
     const u = this.authService.currentUserSignal();
     this.currentUserId = u ? u.id : '';
+    this.loadLeaderboard();
+  }
 
-    this.dsaService.getLeaderboard().subscribe({
+  setCategory(category: 'DSA' | 'JS') {
+    if (this.selectedCategory === category) return;
+    this.selectedCategory = category;
+    this.loadLeaderboard();
+  }
+
+  isCurrentUser(user: any): boolean {
+    const u = this.authService.currentUserSignal();
+    if (!u || !user) return false;
+    const matchId = Boolean(u.id && user.id === u.id);
+    const matchUsername = Boolean(u.username && user.username?.toLowerCase() === u.username?.toLowerCase());
+    return matchId || matchUsername;
+  }
+
+  loadLeaderboard() {
+    this.loading = true;
+    const u = this.authService.currentUserSignal();
+    const userId = u ? u.id : '';
+    const username = u ? u.username : '';
+
+    this.dsaService.getLeaderboard(this.selectedCategory).subscribe({
       next: (res) => {
         const rawUsers = res || [];
         
         // Filter out users with 0 solved counts
-        const activeUsers = rawUsers.filter((u: any) => u.solvedCount > 0);
+        const activeUsers = rawUsers.filter((item: any) => item.solvedCount > 0);
         
         // Assign continuous dynamic ranks
-        activeUsers.forEach((u: any, idx: number) => {
-          u.rank = idx + 1;
+        activeUsers.forEach((item: any, idx: number) => {
+          item.rank = idx + 1;
         });
 
-        // Find the current logged in user stats in active users
-        this.currentUserStats = activeUsers.find((u: any) => u.id === this.currentUserId) || null;
+        // Find the current logged in user stats in active users by ID or Username
+        this.currentUserStats = activeUsers.find((item: any) =>
+          (userId && item.id === userId) ||
+          (username && item.username?.toLowerCase() === username.toLowerCase())
+        ) || null;
 
         // Slice top 10 users for the main list
         this.users = activeUsers.slice(0, 10);
