@@ -1,5 +1,5 @@
 import path from 'path';
-import { PDFParse } from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
 export interface ResumeAnalysisResult {
@@ -34,10 +34,8 @@ export class ResumeService {
 
     let text = '';
     if (extension === '.pdf') {
-      const parser = new PDFParse({ data: file.buffer });
-      const parsed = await parser.getText();
+      const parsed = await pdfParse(file.buffer);
       text = parsed.text;
-      await parser.destroy();
     } else if (extension === '.docx') {
       const parsed = await mammoth.extractRawText({ buffer: file.buffer });
       text = parsed.value;
